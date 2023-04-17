@@ -1,0 +1,492 @@
+$searchBGcolor:rgba(200, 200, 200, 0.5);
+.header{
+    width: 100vw;
+    height: 20vh;
+    position: relative;
+    font-family: 'Montserrat';
+    .headerZone{
+        padding: 2vh 8vw 2vh 8vw;
+        height: 16vh;
+        width: 84vw;
+        .headerContainer{
+            height: inherit;
+            width: inherit;
+            display: grid;
+            grid-template-areas: "menu logo buttons"
+            "content content content";
+            grid-template-columns: 1fr 3fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            .headerMenu{
+                grid-area: menu;
+                display: flex;
+                align-items: center;
+                .headerMenuButtonContainer{
+                    width: 100%;
+                    .headerMenuButton{
+                        all:unset;
+                        cursor: pointer;
+                        margin-left: 10px;
+                    }
+                }
+            }
+            .headerLogoSearch{
+                grid-area: logo;
+                width: 100%;
+                height: 100%;
+                .LogoContainer{
+                    width: 100%;
+                    height: 100%;
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    img{
+                        width: 40px;
+                        height: 40px;
+                    }
+                }
+            }
+            .headerHandleButtons{
+                grid-area: buttons;
+                display: flex;
+                align-items: center;
+                .headerHandleButtonsContainer{
+                    width: 100%;
+                    height: 80%;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    a{
+                        height: 100%;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        width: 25%;
+                    }
+                    button{
+                        all: unset;
+                        height: 100%;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        width: 25%;
+                        cursor: pointer;
+                    }
+                }
+                .headerSearchIcon{
+                    background-color: $searchBGcolor;
+                }
+            }
+            .headerContent{
+                grid-area: content;
+                display: flex;
+                flex-direction: column;
+                &::before{
+                    content: '';
+                    width: 100%;
+                    height: 2px;
+                    background-color: rgba(190, 190, 190, 0.2);
+                }
+                .headerContentContainer{
+                    width: 100%;
+                    margin-top: 16px;
+                    display: flex;
+                    flex-direction: row;
+                    justify-content: center;
+                    align-items: center;
+                    .headerContentElement{
+                        width: 12%;
+                        height: 100%;
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        a{
+                            text-decoration: none;
+                            color: black;
+                            font-size: 1rem;
+                            &:hover{
+                                color: rgb(133, 196, 38);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    .headerSideMenu{
+        //display: none;
+        position: fixed;
+        left: 0;
+        top: 0;
+        width: 500px;
+        height: 100vh;
+        background-color: white;
+        animation-name: MenuSlide;
+        animation-duration: 0.5s;
+        z-index: 10;
+        div.Separator{
+            height: 2px;
+            width: 100%;
+            background-color: rgba(190, 190, 190, 0.2);
+            margin: 16px 0;
+        }
+        .headerSideMenuContainer{
+            overflow-y: auto;
+            padding: 30px;
+            width: 100%;
+            height: 100%;
+            background-color: white;
+            &::-webkit-scrollbar {
+                width: 5px;
+              }
+            &::-webkit-scrollbar-track {
+                -webkit-box-shadow: 5px 5px 5px -5px rgba(34, 60, 80, 0.2) inset;
+                box-shadow: 5px 5px 5px -5px rgba(34, 60, 80, 0.2) inset;
+                background-color: #f9f9fd;
+                border-radius: 5px;
+              }
+             &::-webkit-scrollbar-thumb {
+                border-radius: 5px;
+                background: linear-gradient(180deg, #00c6fb, #005bea);
+              }
+            .headerSideMenuTop{
+            line-height: 1;
+            font-size: 1.75rem;
+            font-weight: 600;
+            border-bottom: 1px solid var(--bg-minor-shade);
+            padding-bottom: 2rem;
+            margin-bottom: 2rem;
+            }
+            .headerSideMenuSection{
+                ul{
+                    all: unset;
+                    display: flex;
+                    flex-direction: column;
+                    height: 40vh;
+                    justify-content: space-around;
+                    li{
+                        all: unset;
+                        font-size: 1.25rem;
+                        a{
+                            text-decoration: none;
+                            color: black;
+                            &:hover{
+                                color: rgb(133, 196, 38);;
+                            }
+                        }
+                    }
+                }
+            }
+            .headerSideMenuContacts{
+                .headerSideMenuContactsHead{
+                    font-size: 1.5rem;
+                    font-weight: 700;
+                }
+                .headerSideMenuContactsContent{
+                    margin-top: 16px;
+                    div{
+                        font-size: 1.25rem;
+                        margin: 8px 0;
+                    }
+                }
+            }
+        }
+        .headerSideMenuShutButton{
+            all:unset;
+            cursor: pointer;
+            position: absolute;
+            background-color: white;
+            height: 48px;
+            width: 48px;
+            top:24px;
+            left: calc(100% + 64px);
+            border-radius: 48px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            &:hover{
+                background-color: whitesmoke;
+            }
+
+        }
+        @keyframes MenuSlide {
+            from{
+                left: -560px;
+            }
+            to{
+                left:0px;
+            }
+        }
+    }
+    .headerButtonImg{
+        height: 24px;
+        width: 24px;
+    }
+
+}
+
+.headermob{
+    width: 100vw;
+    height: fit-content;
+    position: relative;
+    font-family: 'Montserrat';
+    .headerZone{
+        padding: 2vh 4vw 2vh 4vw;
+        height: 8vh;
+        width: 92vw;
+        &::after{
+            content: "";
+            display: block;
+            width: 80%;
+            padding: 0 10%;
+            height: 2px;
+            background-color: rgba(190, 190, 190, 0.2);
+        }
+        .headerContainer{
+            height: inherit;
+            width: inherit;
+            display: grid;
+            grid-template-areas: "menu logo buttons";
+            grid-template-columns: 1fr 3fr 1fr;
+            grid-template-rows: 1fr ;
+           
+            .headerMenu{
+                grid-area: menu;
+                display: flex;
+                align-items: center;
+                .headerMenuButtonContainer{
+                    width: 100%;
+                    .headerMenuButton{
+                        all:unset;
+                        cursor: pointer;
+                        margin-left: 10px;
+                    }
+                }
+            }
+            .headerLogo{
+                grid-area: logo;
+                width: 100%;
+                height: 100%;
+                .LogoContainer{
+                    width: 100%;
+                    height: 100%;
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    img{
+                        width: 40px;
+                        height: 40px;
+                    }
+                }
+            }
+            .headerHandleButtons{
+                grid-area: buttons;
+                display: flex;
+                align-items: center;
+                .headerHandleButtonsContainer{
+                    width: 100%;
+                    height: 80%;
+                    display: flex;
+                    justify-content: right;
+                    align-items: center;
+                    a{
+                        height: 100%;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        width: 32px;
+                    }
+                    button{
+                        all: unset;
+                        height: 100%;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        width: 25%;
+                        cursor: pointer;
+                    }
+                }
+               
+            }
+        }
+    }
+    .headerSideMenu{
+        //display: none;
+        position: fixed;
+        left: 0;
+        top: 0;
+        width: 92vw;
+        height: 100vh;
+        background-color: white;
+        animation-name: MenuSlide;
+        animation-duration: 0.5s;
+        z-index: 10;
+        
+        div.Separator{
+            height: 2px;
+            width: 100%;
+            background-color: rgba(190, 190, 190, 0.2);
+            margin: 16px 0;
+        }
+        .headerSideMenuContainer{
+            padding: 3vh 4vw;
+            width: 100%;
+            height: 100%;
+            background-color: white;
+            overflow-y: auto;
+            &::-webkit-scrollbar {
+                width: 5px;
+              }
+            &::-webkit-scrollbar-track {
+                -webkit-box-shadow: 5px 5px 5px -5px rgba(34, 60, 80, 0.2) inset;
+                box-shadow: 5px 5px 5px -5px rgba(34, 60, 80, 0.2) inset;
+                background-color: #f9f9fd;
+                border-radius: 5px;
+              }
+             &::-webkit-scrollbar-thumb {
+                border-radius: 5px;
+                background: linear-gradient(180deg, #00c6fb, #005bea);
+              }
+            .headerSideMenuTopContainer{
+            display: flex;
+            justify-content:space-between;
+            align-items: center;
+            font-size: 1.5rem;
+            font-weight: 600;
+            border-bottom: 1px solid var(--bg-minor-shade);
+            .headerSideMenuTopHandleButtonsContainer{
+                width: 100%;
+                display: flex;
+                flex-direction: row;
+                height: 48px;
+                .headerSearchIcon{
+                    all: unset;
+                    width: 48px;
+                    height: 48px;
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    cursor: pointer;
+                }
+                a{
+                    all: unset;
+                    width: 48px;
+                    height: 48px;
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    cursor: pointer;
+                }
+                    .headerSideMenuTopHandleButtonsCloseSearch{
+                        all: unset;
+                        width: 48px;
+                            height: 48px;
+                            display: flex;
+                            justify-content: center;
+                            align-items: center;
+                            background-color: rgba(200, 200, 200, 0.5);
+                        cursor: pointer;
+                        img{
+                            width: 32px;
+                            height: 32px;
+                        }
+                    }
+                
+            }
+            .headerSideMenuShutButton{
+                all:unset;
+                cursor: pointer;
+                background-color: white;
+                height: 32px;
+                width: 32px;
+                border-radius: 32px;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                &:hover{
+                    background-color: whitesmoke;
+                }
+    
+            }
+            }
+            .headerSideMenuSection{
+                ul{
+                    all: unset;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 1.5rem;
+                    justify-content: space-between;
+                    li{
+                        all: unset;
+                        font-size: 1rem;
+                        a{
+                            text-decoration: none;
+                            color: black;
+                            &:hover{
+                                color: rgb(133, 196, 38);;
+                            }
+                        }
+                    }
+                }
+            }
+            .headerSideMenuCatalog{
+                .headerSideMenuCatalogHead{
+                    font-size: 1.25rem;
+                    font-weight: 700;
+                    padding-bottom: 1rem;
+                }
+                .headerSideMenuCatalogContent{
+                    margin-top: 16px;
+                    ul{
+                        all: unset;
+                        display: flex;
+                        flex-direction: column;
+                        gap: 1.5rem;
+                        justify-content: space-between;
+                        li{
+                            all: unset;
+                            font-size: 1rem;
+                            a{
+                                text-decoration: none;
+                                color: black;
+                                &:hover{
+                                    color: rgb(133, 196, 38);;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .headerSideMenuContacts{
+                .headerSideMenuContactsHead{
+                    font-size: 1.25rem;
+                    font-weight: 700;
+                }
+                .headerSideMenuContactsContent{
+                    margin-top: 16px;
+                    div{
+                        font-size: 1rem;
+                        margin: 8px 0;
+                        a{
+                            text-decoration:none;
+                            color: black;
+                        }
+                    }
+                }
+            }
+        }
+        
+        @keyframes MenuSlide {
+            from{
+                left: -560px;
+            }
+            to{
+                left:0px;
+            }
+        }
+    }
+    .headerButtonImg{
+        height: 32px;
+        width: 32px;
+    }
+
+}

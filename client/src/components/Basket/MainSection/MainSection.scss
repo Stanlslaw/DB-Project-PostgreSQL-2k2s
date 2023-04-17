@@ -1,0 +1,97 @@
+.mainSection{
+    height: fit-content;
+    font-family: 'Montserrat';
+    .mainZone{
+        width: 84vw;
+        height: 100%;
+        padding: 0vh 8vw 0vh 8vw;
+        min-height: 60vh;
+        .mainSectionContainer{
+            .mainSectionContainerTitle{
+                font-size: 1.5rem;
+                text-align: left;
+                padding: 0 0 1rem 0;
+            }
+            .mainSectionContainerContent{
+                .basketContent{
+                    display: grid;
+                    grid-template-areas:
+                        "items controls"
+                        "items controls"
+                        "items controls";
+                    grid-gap: 2rem 2.5rem;
+                    grid-auto-columns: 6fr 2fr;
+                    grid-auto-rows: max-content auto;
+                    .items{
+                        grid-area: items;
+                    }
+                    .controls{
+                        grid-area: controls;
+                        .controlsContainer{
+                            position: sticky;
+                            top: 1.5rem;
+                            display: grid;
+                            grid-auto-rows: max-content;
+                            .counter{
+                                padding: 1.5rem 1.5rem 1rem;
+                                background-color: #e9e9e9ca;
+                                .counterHeader{
+                                    font-size: 1.5rem;
+                                    font-weight: 500;
+                                    padding-bottom: 1rem;
+                                }
+                                .counterInfo{
+
+                                }
+                            }
+                            
+                        }
+                        .total{
+                            padding: 0 1.5rem 1.5rem;
+                            display: grid;
+                            gap: 1rem;
+                            background-color: #e9e9e9ca;
+                             .totalHeader{}
+                             .totalInfo{    
+                                font-size: 1.5rem;
+                                font-weight: 500;
+                                line-height: 1.8rem
+                            }   
+                        }
+                        .SubmitButton{
+                            .SubmitButtonLink{
+                                padding: 1rem 0;
+                                text-decoration: none;
+                                display: flex;
+                                justify-content: center;
+                                align-items: center;
+                                background-color: #76bc21;
+                                div{
+                                    font-size: 1.25rem;
+                                    color: white;
+                                    font-weight: 500;
+                                }
+                            }
+                        }
+                    }
+                    
+                    @media screen and (max-width: 1000px){
+                        &{
+                            grid-template-areas:
+                                "items items"
+                                "controls controls";
+                            grid-gap: 1rem;
+                            grid-auto-columns: 1fr 1fr;
+                        }
+                        }
+                }
+                .emptyContent{
+                    font-size: 1.5rem;
+                    padding: 2rem 0;
+                    text-align: left;
+                }
+              
+            }
+        }
+    }
+}

@@ -1,0 +1,22 @@
+.mainSectionEntry{
+    height: fit-content;
+    font-family: 'Montserrat';
+    .mainZone{
+        width: 84vw;
+        height: 100%;
+        padding: 0vh 8vw 0vh 8vw;
+        min-height: 62vh;
+        .mainContainer{
+          display: flex;
+          align-items: center;
+          justify-content: center;
+            height: inherit;
+            min-height: inherit;
+            .log{
+                min-width: 280px;
+                width: 25vw;
+            }
+        }
+        
+    }
+}

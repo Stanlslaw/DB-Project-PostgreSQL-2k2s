@@ -1,0 +1,30 @@
+.mainSection{
+    height: fit-content;
+    font-family: 'Montserrat';
+    .mainZone{
+        width: 84vw;
+        height: 100%;
+        padding: 0vh 8vw 0vh 8vw;
+        min-height: 60vh;
+        .mainSectionContainer{
+            .mainSectionContainerTitle{
+                font-size: 1.5rem;
+                text-align: left;
+                padding: 0 0 1rem 0;
+            }
+            .mainSectionContainerContent{
+                display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
+    grid-template-rows: auto;
+    grid-row-gap: 2rem;
+    grid-column-gap: 2rem;
+    margin-top: 2rem;
+                .emptyContent{
+                    font-size: 1.5rem;
+                    padding: 2rem 0;
+                    text-align: left;
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,32 @@
+
+.mainPage{
+    width: 100vw;
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    --status: none;
+    &::-webkit-scrollbar {
+        width: 5px;
+      }
+    &::-webkit-scrollbar-track {
+        -webkit-box-shadow: 5px 5px 5px -5px rgba(34, 60, 80, 0.2) inset;
+        box-shadow: 5px 5px 5px -5px rgba(34, 60, 80, 0.2) inset;
+        background-color: #f9f9fd;
+      }
+     &::-webkit-scrollbar-thumb {
+        border-radius: 5px;
+        background: linear-gradient(180deg, #00c6fb, #005bea);
+      }
+      &::after{
+        content: "";
+        position: absolute;
+        display: var(--status);
+        height: 100vh;
+        top: 0;
+        right: 0;
+        width: 100vw;
+        backdrop-filter: blur(3px);
+        z-index: 3;
+        background: radial-gradient(rgba(5, 5, 5, 0.4), rgba(55, 55, 55, 0.4));
+      }
+}

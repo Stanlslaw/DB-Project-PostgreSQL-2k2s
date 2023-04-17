@@ -1,0 +1,109 @@
+.item{
+    --item-image-size: 200px;
+    display: grid;
+    grid-template-areas:
+        "image title title total"
+        "image delete . counter"
+        "image . . .";
+    grid-auto-columns: var(--item-image-size) min-content auto min-content;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 2px solid #f2f2f2;
+    .itemImageContainer{
+        grid-area: image;
+       
+        .itemImage{
+            width: var(--item-image-size);
+            height: var(--item-image-size);
+        }
+    }
+    .itemTitle{
+        grid-area: title;
+        font-size: 1.5rem;
+        font-weight: 500;
+        line-height: 1.8rem;
+        color: black;
+        text-decoration: none;
+        word-break: break-word;
+    }
+    .itemPrice{
+        grid-area: price;
+        color: black;
+        display: grid;
+        grid-auto-flow: column;
+        justify-self: start;
+    }
+    .itemTotal{
+        grid-area: total;
+        font-size: 1.5rem;
+        line-height: 1.8rem;
+        justify-self: end;
+        font-weight: 500;
+        white-space: nowrap;
+    }
+    .delete{
+        grid-area: delete;
+        position: relative;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0 1rem;
+        color: #999999;
+        .Button{
+            all: unset;
+            cursor: pointer;
+            display: grid;
+            grid-template-columns: repeat(2, max-content);
+            grid-gap: 0 0.5rem;
+            span{
+                white-space: nowrap;
+                img{
+                    width: 1.5rem;
+                    height: 1.5rem;
+                }
+            }
+        }
+    }
+    .itemCounter{
+        grid-area: counter;
+        justify-self: self-end;
+        div{
+            border-radius: 0px;
+        }
+    }
+    @media screen and (max-width: 720px){
+        & {
+            --item-image-size: 140px;
+            grid-template-areas:
+                "image title"
+                "image total"
+                "image counter"
+                "image delete";
+            grid-auto-columns: minmax(var(--item-image-size), auto) auto;
+        }
+    }
+    @media screen and (max-width: 500px){
+        & {
+            --item-image-size: 80px;
+            grid-template-areas:
+                "image title"
+                "image total"
+                "image counter"
+                "image delete";
+            grid-auto-columns: minmax(var(--item-image-size), auto) auto;
+        }
+        .itemCounter{
+            justify-self: self-start;
+        }
+        .itemTotal{
+            justify-self: self-start;
+        }
+    }
+    @media screen and (max-width: 425px){
+        &{
+            span.controlText{
+                display: none;
+            }
+        }
+    }
+}
