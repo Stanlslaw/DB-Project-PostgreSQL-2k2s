@@ -13,9 +13,14 @@ export default function Item() {
   return (
     <div className="item">
       <div className="itemImageContainer">
-        <img className="itemImage" src={img} alt="товар" />
+        <Link to="/catalog/item?009">
+          <img className="itemImage" src={img} alt="товар" />
+        </Link>
       </div>
-      <Link className="itemTitle">Шина Belshina</Link>
+
+      <Link className="itemTitle" to="/catalog/item?009">
+        Шина Belshina
+      </Link>
       <div className="itemTotal">1000$</div>
       <div className="delete">
         <button className="Button">

@@ -25,7 +25,7 @@ export default function Card(props) {
             </div>
           </div>
           <div className="productTitle">
-            <Link to="/catalog">Шина</Link>
+            <Link to="/catalog/item?009">Шина</Link>
           </div>
           <div className="productDescription">
             Размеры 215/55 R16 97V Бренд Belshina

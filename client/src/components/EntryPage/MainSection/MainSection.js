@@ -7,7 +7,7 @@ import { useSelector } from "react-redux";
 import { LockOutlined, UserOutlined } from "@ant-design/icons";
 
 export default function Main(props) {
-  const [isUserHasAccount, setisUserHasAccount] = useState(false);
+  const [isUserHasAccount, setisUserHasAccount] = useState(true);
   return (
     <main className="mainSectionEntry">
       <div className="mainZone">
@@ -20,59 +20,70 @@ export default function Main(props) {
           </Breadcrumb.Item>
         </Breadcrumb>
         <div className="mainContainer">
-          {isUserHasAccount ? (
+          {!isUserHasAccount ? (
             <div className="reg">
               <Form
                 name="basic"
                 labelCol={{
-                  span: 6,
+                  flex: "75px",
                 }}
-                wrapperCol={{
-                  span: 20,
-                }}
+                wrapperCol={{ flex: 1 }}
+                colon={false}
+                labelAlign="left"
+                // style={{ minWidth: "260px" }}
               >
                 <Form.Item
                   name={["user", "email"]}
-                  label="Email"
+                  label="Email:"
                   rules={[{ type: "email", required: true }]}
                 >
                   <Input />
                 </Form.Item>
                 <Form.Item
                   name={["user", "name"]}
-                  label="Имя"
+                  label="Имя:"
                   rules={[{ required: true }]}
                 >
                   <Input />
                 </Form.Item>
                 <Form.Item
                   name={["user", "lastname"]}
-                  label="Фамилия"
+                  label="Фамилия:"
                   rules={[{ required: true }]}
                 >
                   <Input />
                 </Form.Item>
                 <Form.Item
-                  label="Пароль"
+                  label="Пароль:"
                   name="password"
+                  style={{ flexFlow: "nowrap" }}
+                  wrapperCol={{ flexFlow: "nowrap" }}
                   rules={[
                     {
                       required: true,
-                      message: "Please input your password!",
+                      message: "Пожалуйста, введите пароль!",
                     },
                   ]}
                 >
                   <Input.Password />
                 </Form.Item>
-                <Form.Item
-                  wrapperCol={{
-                    offset: 5,
-                    span: 16,
-                  }}
-                >
-                  <Button type="primary" htmlType="submit">
+                <Form.Item>
+                  <Button
+                    type="primary"
+                    htmlType="submit"
+                    style={{ width: "100%" }}
+                  >
                     Зарегистрироваться
                   </Button>
+                  Есть аккаунт
+                  <button
+                    className="regbutton"
+                    onClick={() => {
+                      setisUserHasAccount(true);
+                    }}
+                  >
+                    войти.
+                  </button>
                 </Form.Item>
               </Form>
             </div>
@@ -80,47 +91,47 @@ export default function Main(props) {
             <div className="log">
               <Form
                 name="normal_login"
-                style={{ minWidth: "280px", width: "100%" }}
+                style={{ minWidth: "260px", width: "100%" }}
                 initialValues={{
                   remember: true,
                 }}
               >
                 <Form.Item
-                  name="username"
+                  name="Email"
                   rules={[
                     {
                       required: true,
-                      message: "Please input your Username!",
+                      message: "Пожалуйста, введите email!",
                     },
                   ]}
                 >
                   <Input
                     prefix={<UserOutlined className="site-form-item-icon" />}
-                    placeholder="Username"
+                    placeholder="Email"
                   />
                 </Form.Item>
                 <Form.Item
-                  name="password"
+                  name="Пароль"
                   rules={[
                     {
                       required: true,
-                      message: "Please input your Password!",
+                      message: "Пожалуйста, введите пароль!",
                     },
                   ]}
                 >
                   <Input
-                    prefix={<LockOutlined className="site-form-item-icon" />}
+                    prefix={<LockOutlined />}
                     type="password"
-                    placeholder="Password"
+                    placeholder="Пароль"
                   />
                 </Form.Item>
                 <Form.Item>
                   <Form.Item name="remember" valuePropName="checked" noStyle>
-                    <Checkbox>Remember me</Checkbox>
+                    <Checkbox>Запомнить меня</Checkbox>
                   </Form.Item>
 
                   <Link style={{ float: "right" }} href="">
-                    Forgot password
+                    Забыли пароль?
                   </Link>
                 </Form.Item>
 
@@ -130,9 +141,17 @@ export default function Main(props) {
                     htmlType="submit"
                     style={{ width: "100%" }}
                   >
-                    Log in
+                    Войти
                   </Button>
-                  Or <Link>register now!</Link>
+                  Или
+                  <button
+                    className="logbutton"
+                    onClick={() => {
+                      setisUserHasAccount(false);
+                    }}
+                  >
+                    пройти регистрацию.
+                  </button>
                 </Form.Item>
               </Form>
             </div>

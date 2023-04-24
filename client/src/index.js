@@ -38,7 +38,7 @@ root.render(
           <Route path="/profile" element={<Profile />} />
           <Route path="/payment" element={<Payment />} />
           <Route path="/about" element={<AboutUs />} />
-          <Route path="/order" element={<OrderPage />} />
+          <Route path="/basket/order" element={<OrderPage />} />
           <Route path="/error" element={<ErrorPage />} />
           <Route path="*" element={<ErrorPage />} />
         </Routes>

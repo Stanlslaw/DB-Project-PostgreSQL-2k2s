@@ -30,7 +30,6 @@ export default function Main(props) {
       <div className="content">{cards.slice(i * 12, i * 12 + 12)}</div>
     );
   }
-  console.log(ContentArray);
 
   const [page, setPage] = useState(1);
 

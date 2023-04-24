@@ -13,8 +13,33 @@
             height: inherit;
             min-height: inherit;
             .log{
-                min-width: 280px;
+                min-width: 260px;
                 width: 25vw;
+                .logbutton{
+                    all: unset;
+                    padding-left: 4px;
+                    color: #1677ff;
+                    text-decoration: none;
+                    background-color: transparent;
+                    outline: none;
+                    cursor: pointer;
+                }
+               
+            }
+            .reg{
+                min-width: 260px;
+                width: 25vw;
+                color: wheat;
+                .regbutton{
+                    all: unset;
+                    padding-left: 4px;
+                    color: #1677ff;
+                    text-decoration: none;
+                    background-color: transparent;
+                    outline: none;
+                    cursor: pointer;
+                }
+                
             }
         }
         

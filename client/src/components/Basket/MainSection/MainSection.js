@@ -38,7 +38,7 @@ export default function MainSection() {
                       <div className="totalInfo">3000$</div>
                     </div>
                     <div className="SubmitButton">
-                      <Link to="/order" className="SubmitButtonLink">
+                      <Link to="/basket/order" className="SubmitButtonLink">
                         <div>Оформить заказ</div>
                       </Link>
                     </div>
