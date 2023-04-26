@@ -1,0 +1,27 @@
+{
+  "name": "cursovoi",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "cd backend && concurrently \"npm start\" \"cd ../client && npm start\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Stanlslaw/DB-Project-PostgreSQL-2k2s.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Stanlslaw/DB-Project-PostgreSQL-2k2s/issues"
+  },
+  "homepage": "https://github.com/Stanlslaw/DB-Project-PostgreSQL-2k2s#readme",
+  "devDependencies": {
+    "concurrently": "^8.0.1"
+  }
+}
