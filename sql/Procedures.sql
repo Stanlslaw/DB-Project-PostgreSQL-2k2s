@@ -6,5 +6,29 @@ EXECUTE format(
     y,
     m
 );
-END;
-$$
+END $$;
+create sequence users_id start 1 no cycle owned by users.user_id;
+CREATE or Replace procedure reg_user(
+        UserName text,
+        UserLastname text,
+        UserEmail text,
+        UserPhone text,
+        UserPassword text
+    ) LANGUAGE plpgsql as $$ BEGIN
+INSERT into users(
+        user_id,
+        user_name,
+        user_lastname,
+        user_email,
+        user_phone
+    )
+values(
+        nextval('users_id'),
+        UserName,
+        UserLastname,
+        UserEmail,
+        UserPhone
+    )
+insert into users_passwords(user_id, pass_hesh)
+values('currval', crypt(UserPassword, gen_salt('md5')))
+END $$

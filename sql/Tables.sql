@@ -1,5 +1,5 @@
 CREATE TABLE USERS (
-	USER_ID SERIAL PRIMARY KEY,
+	USER_ID int not null PRIMARY KEY,
 	USER_NAME VARCHAR(255) NOT NULL,
 	USER_LASTNAME VARCHAR(255) NOT NULL,
 	USER_EMAIL VARCHAR(255) NOT NULL,
@@ -104,4 +104,31 @@ CREATE TABLE pg_audit (
 	query_pos integer,
 	location text,
 	application_name text
+);
+CREATE TABLE postgres_log (
+	log_time timestamp(3) with time zone,
+	user_name text,
+	database_name text,
+	process_id integer,
+	connection_from text,
+	session_id text,
+	session_line_num bigint,
+	command_tag text,
+	session_start_time timestamp with time zone,
+	virtual_transaction_id text,
+	transaction_id bigint,
+	error_severity text,
+	sql_state_code text,
+	message text,
+	detail text,
+	hint text,
+	internal_query text,
+	internal_query_pos integer,
+	context text,
+	query text,
+	query_pos integer,
+	location text,
+	application_name text,
+	backend_type text,
+	PRIMARY KEY (session_id, session_line_num)
 );
