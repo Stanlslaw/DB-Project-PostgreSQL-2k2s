@@ -2,7 +2,7 @@ CREATE or REPLACE PROCEDURE get_log(y varchar(2), m varchar(2)) LANGUAGE plpgsql
 END IF;
 TRUNCATE TABLE postgres_log;
 EXECUTE format(
-    'COPY postgres_log FROM ''/var/log/postgresql/postgresql-%s-%s.csv'' CSV DELIMITER '','' QUOTE ''"''',
+    'COPY postgres_log FROM ''/var/lib/postgresql/14/main/log/postgresql-%s-%s.csv'' CSV DELIMITER '','' QUOTE ''"''',
     y,
     m
 );
@@ -28,7 +28,9 @@ values(
         UserLastname,
         UserEmail,
         UserPhone
-    )
+    );
 insert into users_passwords(user_id, pass_hesh)
-values('currval', crypt(UserPassword, gen_salt('md5')))
-END $$
+values(currval('users_id'), crypt(UserPassword, gen_salt('md5')));
+END $$;
+
+Call reg_user('Станислав','Cкалкович','xx@gmail.com','+3754329493','Admin2004');
