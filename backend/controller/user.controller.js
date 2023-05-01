@@ -1,18 +1,19 @@
 const db = require("../db.js");
 
 class UserController {
-  async createUser(req, res) {
+  async regUser(req, res) {
     try {
-      const { name, lastname, email, phone } = req.body;
-      const newPerson = await db.query("CALL create_user($1,$2,$3,$4);", [
+      const { name, lastname, email, phone, password } = req.body;
+      const result = await db.query("select reg_user($1,$2,$3,$4,$5)", [
         name,
         lastname,
         email,
         phone,
+        password,
       ]);
-      res.json([name, lastname, email, phone]);
+      res.json({ result: result.rows[0].reg_user });
     } catch (e) {
-      console.log(e);
+      res.json({ result: e });
     }
   }
   async getUser(req, res) {}
