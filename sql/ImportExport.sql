@@ -1,48 +1,49 @@
-----------------------------Экспорт БД---------------------
-call export_json('/postgresqlData/BackupJson/')
+--^^^^^^^^^^^^^^^^^^^^^^^^^^^^^Импорт/экспорт^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+--################################Экспорт БД###############################
+call export_json('/postgresqlData/BackupJson')
 CREATE OR REPLACE PROCEDURE export_json(pathToSave TEXT) AS $$ BEGIN EXECUTE format(
-		'COPY (SELECT row_to_json(t) FROM users t) TO %L',
-		pathToSave || 'users.json'
+		'COPY (SELECT COALESCE(cast(json_agg(to_json(t)) as text),''[]'') FROM users t) TO %L',
+		pathToSave || '/users.json'
 	);
 EXECUTE format(
-	'COPY (SELECT row_to_json(t) FROM users_addresses t) TO %L',
-	pathToSave || 'users_addresses.json'
+	'COPY (SELECT COALESCE(cast(json_agg(to_json(t)) as text),''[]'') FROM users_addresses t) TO %L',
+	pathToSave || '/users_addresses.json'
 );
 EXECUTE format(
-	'COPY (SELECT row_to_json(t) FROM users_passwords t) TO %L',
-	pathToSave || 'users_passwords.json'
+	'COPY (SELECT COALESCE(cast(json_agg(to_json(t)) as text),''[]'') FROM users_passwords t) TO %L',
+	pathToSave || '/users_passwords.json'
 );
 EXECUTE format(
-	'COPY (SELECT row_to_json(t) FROM basket t) TO %L',
-	pathToSave || 'basket.json'
+	'COPY (SELECT COALESCE(cast(json_agg(to_json(t)) as text),''[]'') FROM basket t) TO %L',
+	pathToSave || '/basket.json'
 );
 EXECUTE format(
-	'COPY (SELECT row_to_json(t) FROM favorites t) TO %L',
-	pathToSave || 'favorites.json'
+	'COPY (SELECT COALESCE(cast(json_agg(to_json(t)) as text),''[]'') FROM favorites t) TO %L',
+	pathToSave || '/favorites.json'
 );
 EXECUTE format(
-	'COPY (SELECT row_to_json(t) FROM orders t) TO %L',
-	pathToSave || 'orders.json'
+	'COPY (SELECT COALESCE(cast(json_agg(to_json(t)) as text),''[]'') FROM orders t) TO %L',
+	pathToSave || '/orders.json'
 );
 EXECUTE format(
-	'COPY (SELECT row_to_json(t) FROM orders_products t) TO %L',
-	pathToSave || 'orders_products.json'
+	'COPY (SELECT COALESCE(cast(json_agg(to_json(t)) as text),''[]'') FROM orders_products t) TO %L',
+	pathToSave || '/orders_products.json'
 );
 EXECUTE format(
-	'COPY (SELECT row_to_json(t) FROM products  t) TO %L',
-	pathToSave || 'products.json'
+	'COPY (SELECT COALESCE(cast(json_agg(to_json(t)) as text),''[]'') FROM products  t) TO %L',
+	pathToSave || '/products.json'
 );
 EXECUTE format(
-	'COPY (SELECT row_to_json(t) FROM product_characteristics t) TO %L',
-	pathToSave || 'product_characteristics.json'
+	'COPY (SELECT COALESCE(cast(json_agg(to_json(t)) as text),''[]'') FROM product_characteristics t) TO %L',
+	pathToSave || '/product_characteristics.json'
 );
 EXECUTE format(
-	'COPY (SELECT row_to_json(t) FROM product_comments t) TO %L',
-	pathToSave || 'product_comments.json'
+	'COPY (SELECT COALESCE(cast(json_agg(to_json(t)) as text),''[]'') FROM product_comments t) TO %L',
+	pathToSave || '/product_comments.json'
 );
 END;
 $$ LANGUAGE plpgsql;
--------------------------------------Импорт в БД--------------------------
+--#####################################Импорт в БД########################################
 call import_json('/postgresqlData/BackupJson');
 create or REPLACE procedure import_json(pathToGet text) as $body$
 declare usersJson json;
