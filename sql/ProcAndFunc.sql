@@ -11,8 +11,7 @@ EXECUTE format(
 END $$;
 --##########################################Пользователи#######################################
 ---------------------------Функция входа пользователя---------------------------------
---c
-create or replace function log_user(email text, password text) returns text as $body$ begin if (
+create or replace function log_user(email text, password text) returns bigint as $body$ begin if (
 		select num <> 1
 		from (
 				select count(*) as num
@@ -22,7 +21,7 @@ create or replace function log_user(email text, password text) returns text as $
 						where user_email = email
 					) as usrmail
 			) as rescount
-	) then return 'Error: Неправильный логин или пароль';
+	) then raise exception 'Error: Неправильный логин или пароль';
 elseif (
 	select (pass_hesh = crypt(password, pass_hesh))
 	from (
@@ -31,8 +30,12 @@ elseif (
 			where user_email = email
 		) as usr
 		join users_passwords as psw on psw.user_id = usr.user_id
-) then return 'Succsess';
-else return 'Error: Неправильный логин или пароль';
+) then return (
+	select top(1) user_id
+	from users
+	WHERE user_email = email
+);
+else raise EXCEPTion 'Error: Неправильный логин или пароль';
 end if;
 end;
 $body$ language plpgsql;
@@ -50,7 +53,7 @@ create or replace function reg_user(
 				from users
 				where user_email = UserEmail
 			) as usr
-	) <> 0 then return 'Error: Данный пользователь уже зарегестрирован';
+	) <> 0 then raise exception 'Error: Данный пользователь уже зарегестрирован';
 else
 INSERT into users(
 		user_id,
@@ -90,7 +93,7 @@ begin if (
 			from users
 			where user_email = UserEmail
 		) as usr
-) <> 1 then raise 'Error: Пользователя не существует' using errcode = 'user_not_exist';
+) <> 1 then raise exception 'Error: Пользователя не существует';
 else
 select top(user_id) into userId
 from users
@@ -105,13 +108,19 @@ end if;
 end;
 $body$ language plpgsql;
 ---------------------------------------Удалить пользователя------------------------------
-create or replace procedure delete_user(userId text) as $body$ begin
+create or replace procedure delete_user(userId text) as $body$ begin if (
+		select count(*)
+		from orders_id
+		where order_status <> 'closed'
+	) <> 0 THEN raise exception 'Error: У вас еще есть не полученные заказы';
+else
 delete from users
 where user_id = userId;
+end if;
 end;
 $body$ language plpgsql;
 --##########################################Продукты/товары########################################
---с
+--change
 --------------------------------Удаление товара---------------------------------------
 --------------------------------изменение товара--------------------------------------
 --------------------------------Процедура добавления данных о продукте----------------
@@ -302,7 +311,88 @@ end if;
 end;
 $body$ language plpgsql;
 ---------------------------------------получить данные корзины--------------------------------
---с
+CREATE OR REPLACE FUNCTION get_products(
+		min_price REAL,
+		max_price REAL,
+		type_filter VARCHAR(255),
+		brand_filter VARCHAR(255),
+		characteristics_filter JSON,
+		sort_order VARCHAR(4)
+	) RETURNS TABLE (
+		product_id BIGINT,
+		product_name VARCHAR(511),
+		product_brand VARCHAR(255),
+		product_price REAL,
+		product_amount INTEGER,
+		product_description VARCHAR(1023),
+		product_type VARCHAR(255),
+		product_photo_path VARCHAR(511),
+		product_characteristics JSON
+	) AS $$
+DECLARE characteristics_filter_query VARCHAR(1023);
+BEGIN -- Сформируем часть запроса для фильтра по характеристикам товара
+IF characteristics_filter IS NOT NULL THEN
+SELECT COALESCE(
+		string_agg(
+			format(
+				'(SELECT 1 FROM product_characteristics WHERE product_id = p.product_id AND product_characteristics_name = %L AND product_characteristics_value = %L)',
+				key,
+				value
+			),
+			' AND '
+		),
+		'TRUE'
+	) INTO characteristics_filter_query
+FROM json_each(characteristics_filter);
+ELSE characteristics_filter_query := 'TRUE';
+END IF;
+-- Возвращаем результат запроса к таблице товаров с учетом фильтров и сортировки
+RETURN QUERY EXECUTE format(
+	'
+    SELECT
+      p.product_id,
+      p.product_name,
+      p.product_brand,
+      p.product_price,
+      p.product_amount,
+      p.product_description,
+      p.product_type,
+      p.product_photo_path,
+      json_agg(
+        json_build_object(
+          ''name'', pc.product_characteristics_name,
+          ''value'', pc.product_characteristics_value
+        )
+      ) AS product_characteristics
+    FROM products p
+      LEFT JOIN product_characteristics pc ON p.product_id = pc.product_id
+    WHERE
+      p.product_price BETWEEN %s AND %s
+      AND (%s IS NULL OR p.product_type = %s)
+      AND (%s IS NULL OR p.product_brand = %s)
+      AND (%s)
+    GROUP BY
+      p.product_id,
+      p.product_name,
+      p.product_brand,
+      p.product_price,
+      p.product_amount,
+      p.product_description,
+      p.product_type,
+      p.product_photo_path
+    ORDER BY p.product_price %s
+  ',
+	min_price,
+	max_price,
+	type_filter,
+	type_value,
+	brand_filter,
+	brand_filter,
+	characteristics_filter_query,
+	sort_order
+);
+END;
+$$ LANGUAGE plpgsql;
 --##############################################Избранное#####################################
 -------------------------------------добавить в избранное---------------------------
 create or replace procedure add_to_favorites(userId bigint, productId bigint) as $body$ begin
@@ -326,3 +416,76 @@ end;
 $body$ language plpgsql;
 --########################################Заказы########################################
 --########################################Адреса########################################
+---------------------------------------Добавить адрес--------------------------------------
+CREATE OR REPLACE PROCEDURE add_address(
+		IN userIdIn BIGINT,
+		IN regionIn VARCHAR(255),
+		IN cityIn VARCHAR(255),
+		IN streetIn VARCHAR(255),
+		IN houseIn VARCHAR(255),
+		IN apartmentIn VARCHAR(255),
+		In is_savedIn boolean
+	) AS $$ BEGIN if (
+		select count(*)
+		from users_addresses
+		where EXISTS (
+				SELECT 1
+				FROM addresses
+				WHERE user_id = userIdIn
+					AND region = regionIn
+					AND city = cityIn
+					AND street = streetIn
+					AND house = houseIn
+					AND apartment = apartmentIn
+					and is_saved = is_savedIn
+			)
+	) >= 0 then raise exception 'Error: Данный адрес уже существует'
+	else
+INSERT INTO addresses(
+		address_id,
+		user_id,
+		region,
+		city,
+		street,
+		house,
+		apartment,
+		is_saved
+	)
+values(
+		nextval('address_id'),
+		userIdIn,
+		regionIn,
+		cityIn,
+		streetIn,
+		houseIn,
+		apartmentIn,
+		is_savedIn
+	);
+END;
+$$ LANGUAGE plpgsql;
+--------------------------------------------удалить адрес---------------------------
+--change
+create or replace procedure delete_address(AddressId bigint) as $body$ begin if isnull(
+		select USER_id
+		from users_addresses
+		WHERE address_id = AddressId
+	) then
+DELEte from users_addresses
+where address_id = AddressId;
+else raise exception 'Error: Нельзя удалить адрес пользователя, им'
+end $body$ language plpgsql;
+-------------------------------------------Получить адрес------------------------------
+create or replace function get_addresses(userId bigint) returns table(
+		ADDRESS_ID bigint,
+		USER_ID BIGINT,
+		REGION VARCHAR(255),
+		CITY VARCHAR(255),
+		STREET VARCHAR(255),
+		HOUSE VARCHAR(255),
+		APARTMENT VARCHAR(255),
+		is_saved BOOLEAN
+	) as $body$ begin return query
+select *
+from users_addresses
+where user_id = userId;
+end $body$ language plpgsql;
