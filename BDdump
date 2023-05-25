@@ -1,0 +1,2038 @@
+--
+-- PostgreSQL database dump
+--
+
+-- Dumped from database version 14.7 (Ubuntu 14.7-0ubuntu0.22.04.1)
+-- Dumped by pg_dump version 14.7 (Ubuntu 14.7-0ubuntu0.22.04.1)
+
+-- Started on 2023-05-25 03:31:03 +03
+
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
+
+--
+-- TOC entry 2 (class 3079 OID 16387)
+-- Name: pgaudit; Type: EXTENSION; Schema: -; Owner: -
+--
+
+CREATE EXTENSION IF NOT EXISTS pgaudit WITH SCHEMA public;
+
+
+--
+-- TOC entry 3536 (class 0 OID 0)
+-- Dependencies: 2
+-- Name: EXTENSION pgaudit; Type: COMMENT; Schema: -; Owner: 
+--
+
+COMMENT ON EXTENSION pgaudit IS 'provides auditing functionality';
+
+
+--
+-- TOC entry 3 (class 3079 OID 16571)
+-- Name: pgcrypto; Type: EXTENSION; Schema: -; Owner: -
+--
+
+CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;
+
+
+--
+-- TOC entry 3537 (class 0 OID 0)
+-- Dependencies: 3
+-- Name: EXTENSION pgcrypto; Type: COMMENT; Schema: -; Owner: 
+--
+
+COMMENT ON EXTENSION pgcrypto IS 'cryptographic functions';
+
+
+--
+-- TOC entry 948 (class 1247 OID 25561)
+-- Name: product_info; Type: TYPE; Schema: public; Owner: programmer
+--
+
+CREATE TYPE public.product_info AS (
+	product_id bigint,
+	product_name character varying(511),
+	product_brand character varying(255),
+	product_price real,
+	product_amount integer,
+	product_description character varying(1023),
+	product_type character varying(255),
+	product_photo_path character varying(511),
+	product_characteristics json
+);
+
+
+ALTER TYPE public.product_info OWNER TO programmer;
+
+--
+-- TOC entry 286 (class 1255 OID 17284)
+-- Name: add_address(bigint, character varying, character varying, character varying, character varying, character varying, boolean); Type: PROCEDURE; Schema: public; Owner: programmer
+--
+
+CREATE PROCEDURE public.add_address(IN useridin bigint, IN regionin character varying, IN cityin character varying, IN streetin character varying, IN housein character varying, IN apartmentin character varying, IN is_savedin boolean)
+    LANGUAGE plpgsql
+    AS $$ BEGIN if (
+		select count(*)
+		from users_addresses
+		where EXISTS (
+				SELECT 1
+				FROM addresses
+				WHERE user_id = userIdIn
+					AND region = regionIn
+					AND city = cityIn
+					AND street = streetIn
+					AND house = houseIn
+					AND apartment = apartmentIn
+					and is_saved = is_savedIn
+			)
+	) >= 0 then raise exception 'Error: Данный адрес уже существует';
+	else
+INSERT INTO addresses(
+		address_id,
+		user_id,
+		region,
+		city,
+		street,
+		house,
+		apartment,
+		is_saved
+	)
+values(
+		nextval('address_id'),
+		userIdIn,
+		regionIn,
+		cityIn,
+		streetIn,
+		houseIn,
+		apartmentIn,
+		is_savedIn
+	);
+	end if;
+END;
+$$;
+
+
+ALTER PROCEDURE public.add_address(IN useridin bigint, IN regionin character varying, IN cityin character varying, IN streetin character varying, IN housein character varying, IN apartmentin character varying, IN is_savedin boolean) OWNER TO programmer;
+
+--
+-- TOC entry 280 (class 1255 OID 16749)
+-- Name: add_comment(bigint, bigint, character varying); Type: PROCEDURE; Schema: public; Owner: programmer
+--
+
+CREATE PROCEDURE public.add_comment(IN producid bigint, IN userid bigint, IN commenttext character varying)
+    LANGUAGE plpgsql
+    AS $$
+	begin
+		insert into product_comment(
+					comment_id,
+					product_id,
+					user_id,
+					comment_date,
+					comment_text)
+		values(
+			nextval('comment_id'),
+			productId,
+			userId,
+			NOW(),
+			commentText
+		);
+	end;
+$$;
+
+
+ALTER PROCEDURE public.add_comment(IN producid bigint, IN userid bigint, IN commenttext character varying) OWNER TO programmer;
+
+--
+-- TOC entry 281 (class 1255 OID 16659)
+-- Name: add_product(text, text, double precision, integer, text, text, text, json); Type: PROCEDURE; Schema: public; Owner: programmer
+--
+
+CREATE PROCEDURE public.add_product(IN productname text, IN productbrand text, IN productprice double precision, IN productamount integer, IN productdescription text, IN producttype text, IN productphotopath text, IN productcharacteristic json)
+    LANGUAGE plpgsql
+    AS $$
+begin
+ insert into products(
+	 		product_id,
+ 			product_name,
+	 		product_brand,
+	 		product_price,
+	 		product_amount,
+	 		product_description,
+	 		product_type,
+	 		product_photo_path
+)
+values (
+	nextval('product_id'),
+	productName,
+	productBrand,
+	productPrice,
+	productAmount,
+	productDescription,
+	productType,
+	productPhotoPath
+);
+call add_product_characteristic(
+	currval('product_id'),
+	productCharacteristic
+);
+
+end;
+$$;
+
+
+ALTER PROCEDURE public.add_product(IN productname text, IN productbrand text, IN productprice double precision, IN productamount integer, IN productdescription text, IN producttype text, IN productphotopath text, IN productcharacteristic json) OWNER TO programmer;
+
+--
+-- TOC entry 282 (class 1255 OID 16660)
+-- Name: add_product_characteristic(bigint, json); Type: PROCEDURE; Schema: public; Owner: programmer
+--
+
+CREATE PROCEDURE public.add_product_characteristic(IN productid bigint, IN characteristicsjson json)
+    LANGUAGE plpgsql
+    AS $$ begin for i in 0..json_array_length(characteristicsJson) -1 loop
+insert into product_characteristics(
+		product_id,
+		product_characteristics_name,
+		product_characteristics_value
+	)
+values(
+		productId,
+		json_array_element(characteristicsJson, i)::json->>'name',
+		json_array_element(characteristicsJson, i)::json->>'value'
+	) on conflict(
+		product_id,
+		product_characteristics_name,
+		product_characteristics_value
+	) do
+update
+set product_characteristics_name = json_array_element(characteristicsJson, i)::json->>'name',
+	product_characteristics_value = json_array_element(characteristicsJson, i)::json->>'value';
+end loop;
+end;
+$$;
+
+
+ALTER PROCEDURE public.add_product_characteristic(IN productid bigint, IN characteristicsjson json) OWNER TO programmer;
+
+--
+-- TOC entry 293 (class 1255 OID 17263)
+-- Name: add_to_basket(bigint, bigint); Type: PROCEDURE; Schema: public; Owner: programmer
+--
+
+CREATE PROCEDURE public.add_to_basket(IN productid bigint, IN userid bigint)
+    LANGUAGE plpgsql
+    AS $$
+begin 
+	if (select count(*) from basket where user_id=userId and product_id=productId) = 0
+		then 
+			insert into basket(basket_id,product_id,user_id,product_amount)
+				values (nextval('basket_id'),productId,userId,1);
+	else
+			raise exception 'Error: Товар уже существует';
+	end if;
+end;
+$$;
+
+
+ALTER PROCEDURE public.add_to_basket(IN productid bigint, IN userid bigint) OWNER TO programmer;
+
+--
+-- TOC entry 307 (class 1255 OID 17270)
+-- Name: add_to_favorites(bigint, bigint); Type: PROCEDURE; Schema: public; Owner: programmer
+--
+
+CREATE PROCEDURE public.add_to_favorites(IN userid bigint, IN productid bigint)
+    LANGUAGE plpgsql
+    AS $$
+begin
+insert into favorites(favorite_id,user_id,product_id) values(nextval('favorite_id'),userId,productId);
+end;
+$$;
+
+
+ALTER PROCEDURE public.add_to_favorites(IN userid bigint, IN productid bigint) OWNER TO programmer;
+
+--
+-- TOC entry 297 (class 1255 OID 17360)
+-- Name: add_to_orders(bigint, text, bigint, json); Type: PROCEDURE; Schema: public; Owner: programmer
+--
+
+CREATE PROCEDURE public.add_to_orders(IN userid bigint, IN deliverytype text, IN addressid bigint, IN productslist json)
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    CREATE TEMP TABLE product_list(
+        PRODUCT_ID BIGINT NOT NULL,
+        PRODUCT_COUNT INTEGER NOT NULL
+    );
+    INSERT INTO product_list
+    SELECT *
+    FROM json_populate_recordset(NULL::product_list, productsList);
+    
+    DECLARE 
+        total_cost REAL := 0;
+        product_price REAL := 0;
+        product_count INTEGER := 0;
+        cur CURSOR FOR
+            SELECT p.product_price,
+                   op.product_count
+            FROM product_list op
+            JOIN PRODUCTS p ON op.product_id = p.product_id;
+    BEGIN
+        OPEN cur;
+        LOOP 
+            FETCH cur INTO product_price, product_count;
+            EXIT WHEN NOT FOUND;
+            total_cost := total_cost + product_price * product_count;
+        END LOOP;
+        CLOSE cur;
+    END;
+    
+    INSERT INTO orders(
+        orders_id,
+        user_ID,
+        ORDER_DATE,
+        order_status,
+        ORDER_FULL_PRICE,
+        ORDER_DELIVER_TYPE
+    )
+    VALUES(
+        nextval('order_id'),
+        userId,
+        NOW(),
+        'new',
+        total_cost,
+        deliveryType
+    );
+    
+    INSERT INTO orders_products
+    SELECT currval('order_id'),
+           *
+    FROM product_list;
+END;
+$$;
+
+
+ALTER PROCEDURE public.add_to_orders(IN userid bigint, IN deliverytype text, IN addressid bigint, IN productslist json) OWNER TO programmer;
+
+--
+-- TOC entry 310 (class 1255 OID 33802)
+-- Name: delete_address(bigint); Type: PROCEDURE; Schema: public; Owner: programmer
+--
+
+CREATE PROCEDURE public.delete_address(IN addressid bigint)
+    LANGUAGE plpgsql
+    AS $$ begin 
+DELEte from users_addresses
+where address_id = AddressId;
+
+end $$;
+
+
+ALTER PROCEDURE public.delete_address(IN addressid bigint) OWNER TO programmer;
+
+--
+-- TOC entry 292 (class 1255 OID 16913)
+-- Name: delete_comment(bigint, bigint); Type: PROCEDURE; Schema: public; Owner: programmer
+--
+
+CREATE PROCEDURE public.delete_comment(IN commentid bigint, IN userid bigint)
+    LANGUAGE plpgsql
+    AS $$ begin if (
+		select user_id
+		from (
+				select *
+				from product_comments
+				where comment_id = commentId
+			) as commID
+	) = userId then
+delete from product_comments
+where comment_id = commentId;
+else raise exception 'Error: Попытка удалить не свой комментарий';
+end if;
+end;
+$$;
+
+
+ALTER PROCEDURE public.delete_comment(IN commentid bigint, IN userid bigint) OWNER TO programmer;
+
+--
+-- TOC entry 294 (class 1255 OID 17264)
+-- Name: delete_from_basket(bigint, bigint); Type: PROCEDURE; Schema: public; Owner: programmer
+--
+
+CREATE PROCEDURE public.delete_from_basket(IN productid bigint, IN userid bigint)
+    LANGUAGE plpgsql
+    AS $$
+begin 
+	delete from basket where product_id = productId and user_id=userId;
+end;
+$$;
+
+
+ALTER PROCEDURE public.delete_from_basket(IN productid bigint, IN userid bigint) OWNER TO programmer;
+
+--
+-- TOC entry 308 (class 1255 OID 17271)
+-- Name: delete_from_favorites(bigint, bigint); Type: PROCEDURE; Schema: public; Owner: programmer
+--
+
+CREATE PROCEDURE public.delete_from_favorites(IN userid bigint, IN productid bigint)
+    LANGUAGE plpgsql
+    AS $$
+begin
+	delete from favorites where product_id=productId and user_id=userId;
+end;
+$$;
+
+
+ALTER PROCEDURE public.delete_from_favorites(IN userid bigint, IN productid bigint) OWNER TO programmer;
+
+--
+-- TOC entry 299 (class 1255 OID 33801)
+-- Name: delete_from_orders(bigint); Type: PROCEDURE; Schema: public; Owner: programmer
+--
+
+CREATE PROCEDURE public.delete_from_orders(IN orderid bigint)
+    LANGUAGE plpgsql
+    AS $$ begin
+delete from ORDERS
+where order_id = orderId;
+end;
+$$;
+
+
+ALTER PROCEDURE public.delete_from_orders(IN orderid bigint) OWNER TO programmer;
+
+--
+-- TOC entry 287 (class 1255 OID 17302)
+-- Name: delete_not_saved_address(); Type: FUNCTION; Schema: public; Owner: programmer
+--
+
+CREATE FUNCTION public.delete_not_saved_address() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$ begin
+delete from users_addresses
+where user_id = OLD.user_id
+    and is_saved = false;
+return old;
+end;
+$$;
+
+
+ALTER FUNCTION public.delete_not_saved_address() OWNER TO programmer;
+
+--
+-- TOC entry 301 (class 1255 OID 25577)
+-- Name: delete_product(bigint); Type: PROCEDURE; Schema: public; Owner: programmer
+--
+
+CREATE PROCEDURE public.delete_product(IN productid bigint)
+    LANGUAGE plpgsql
+    AS $$ begin
+delete from products
+where product_id = productId;
+end;
+$$;
+
+
+ALTER PROCEDURE public.delete_product(IN productid bigint) OWNER TO programmer;
+
+--
+-- TOC entry 295 (class 1255 OID 17280)
+-- Name: delete_user(bigint); Type: PROCEDURE; Schema: public; Owner: programmer
+--
+
+CREATE PROCEDURE public.delete_user(IN userid bigint)
+    LANGUAGE plpgsql
+    AS $$ begin
+delete from users
+where user_id = userId;
+end;
+$$;
+
+
+ALTER PROCEDURE public.delete_user(IN userid bigint) OWNER TO programmer;
+
+--
+-- TOC entry 296 (class 1255 OID 17304)
+-- Name: delete_user(text); Type: PROCEDURE; Schema: public; Owner: programmer
+--
+
+CREATE PROCEDURE public.delete_user(IN userid text)
+    LANGUAGE plpgsql
+    AS $$ begin
+if (select count(*) from orders_id where order_status<>'closed')<>0 THEN
+	raise exception 'Error: У вас еще есть не полученные заказы';
+else
+delete from users
+where user_id = userId;
+end if;
+end;
+$$;
+
+
+ALTER PROCEDURE public.delete_user(IN userid text) OWNER TO programmer;
+
+--
+-- TOC entry 290 (class 1255 OID 16751)
+-- Name: export_json(text); Type: PROCEDURE; Schema: public; Owner: programmer
+--
+
+CREATE PROCEDURE public.export_json(IN pathtosave text)
+    LANGUAGE plpgsql
+    AS $$ BEGIN EXECUTE format(
+		'COPY (SELECT COALESCE(cast(json_agg(to_json(t)) as text),''[]'') FROM users t) TO %L',
+		pathToSave || '/users.json'
+	);
+EXECUTE format(
+	'COPY (SELECT COALESCE(cast(json_agg(to_json(t)) as text),''[]'') FROM users_addresses t) TO %L',
+	pathToSave || '/users_addresses.json'
+);
+EXECUTE format(
+	'COPY (SELECT COALESCE(cast(json_agg(to_json(t)) as text),''[]'') FROM users_passwords t) TO %L',
+	pathToSave || '/users_passwords.json'
+);
+EXECUTE format(
+	'COPY (SELECT COALESCE(cast(json_agg(to_json(t)) as text),''[]'') FROM basket t) TO %L',
+	pathToSave || '/basket.json'
+);
+EXECUTE format(
+	'COPY (SELECT COALESCE(cast(json_agg(to_json(t)) as text),''[]'') FROM favorites t) TO %L',
+	pathToSave || '/favorites.json'
+);
+EXECUTE format(
+	'COPY (SELECT COALESCE(cast(json_agg(to_json(t)) as text),''[]'') FROM orders t) TO %L',
+	pathToSave || '/orders.json'
+);
+EXECUTE format(
+	'COPY (SELECT COALESCE(cast(json_agg(to_json(t)) as text),''[]'') FROM orders_products t) TO %L',
+	pathToSave || '/orders_products.json'
+);
+EXECUTE format(
+	'COPY (SELECT COALESCE(cast(json_agg(to_json(t)) as text),''[]'') FROM products  t) TO %L',
+	pathToSave || '/products.json'
+);
+EXECUTE format(
+	'COPY (SELECT COALESCE(cast(json_agg(to_json(t)) as text),''[]'') FROM product_characteristics t) TO %L',
+	pathToSave || '/product_characteristics.json'
+);
+EXECUTE format(
+	'COPY (SELECT COALESCE(cast(json_agg(to_json(t)) as text),''[]'') FROM product_comments t) TO %L',
+	pathToSave || '/product_comments.json'
+);
+END;
+$$;
+
+
+ALTER PROCEDURE public.export_json(IN pathtosave text) OWNER TO programmer;
+
+--
+-- TOC entry 289 (class 1255 OID 17287)
+-- Name: get_addresses(bigint); Type: FUNCTION; Schema: public; Owner: programmer
+--
+
+CREATE FUNCTION public.get_addresses(userid bigint) RETURNS TABLE(address_id bigint, user_id bigint, region character varying, city character varying, street character varying, house character varying, apartment character varying, is_saved boolean)
+    LANGUAGE plpgsql
+    AS $$
+begin
+	return query select * from users_addresses where user_id=userId;
+end
+$$;
+
+
+ALTER FUNCTION public.get_addresses(userid bigint) OWNER TO programmer;
+
+--
+-- TOC entry 288 (class 1255 OID 17330)
+-- Name: get_from_basket(bigint); Type: FUNCTION; Schema: public; Owner: programmer
+--
+
+CREATE FUNCTION public.get_from_basket(userid bigint) RETURNS TABLE(product_id bigint)
+    LANGUAGE plpgsql
+    AS $$ begin return query
+select product_id
+from basket
+where user_id = userId;
+end;
+$$;
+
+
+ALTER FUNCTION public.get_from_basket(userid bigint) OWNER TO programmer;
+
+--
+-- TOC entry 309 (class 1255 OID 17272)
+-- Name: get_from_favorites(bigint); Type: FUNCTION; Schema: public; Owner: programmer
+--
+
+CREATE FUNCTION public.get_from_favorites(userid bigint) RETURNS TABLE(product_id bigint)
+    LANGUAGE plpgsql
+    AS $$
+begin
+	return query select product_id from favorites where user_id=userId; 
+end;
+$$;
+
+
+ALTER FUNCTION public.get_from_favorites(userid bigint) OWNER TO programmer;
+
+--
+-- TOC entry 236 (class 1255 OID 16552)
+-- Name: get_log(character varying, character varying); Type: PROCEDURE; Schema: public; Owner: programmer
+--
+
+CREATE PROCEDURE public.get_log(IN y character varying, IN m character varying)
+    LANGUAGE plpgsql
+    AS $$ BEGIN IF length(m) = 1 THEN m := '0' || m;
+END IF;
+TRUNCATE TABLE postgres_log;
+EXECUTE format(
+    'COPY postgres_log FROM ''/var/lib/postgresql/14/main/log/postgresql-%s-%s.csv'' CSV DELIMITER '','' QUOTE ''"''',
+    y,
+    m
+);
+END $$;
+
+
+ALTER PROCEDURE public.get_log(IN y character varying, IN m character varying) OWNER TO programmer;
+
+--
+-- TOC entry 304 (class 1255 OID 33800)
+-- Name: get_orders(bigint); Type: FUNCTION; Schema: public; Owner: programmer
+--
+
+CREATE FUNCTION public.get_orders(userid bigint DEFAULT NULL::bigint) RETURNS TABLE(order_id bigint, user_id bigint, order_date date, order_status character varying, order_full_price real, order_deliver_type character varying, produc_list json)
+    LANGUAGE plpgsql
+    AS $$ begin return query
+select *,
+	COALESCE(cast(json_agg(to_json(op)) as text), '[]')
+from orders o
+	join orders_products op on o.order_id = op.order_id
+where UserID is null
+	or o.user_id = UserId;
+end;
+$$;
+
+
+ALTER FUNCTION public.get_orders(userid bigint) OWNER TO programmer;
+
+--
+-- TOC entry 302 (class 1255 OID 25567)
+-- Name: get_product(bigint); Type: FUNCTION; Schema: public; Owner: programmer
+--
+
+CREATE FUNCTION public.get_product(productid bigint) RETURNS TABLE(product_id bigint, product_name character varying, product_brand character varying, product_price real, product_amount integer, product_description character varying, product_type character varying, product_photo_path character varying, product_characteristics json, product_comments json)
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    RETURN QUERY SELECT
+        p.product_id,
+        p.product_name,
+        p.product_brand,
+        p.product_price,
+        p.product_amount,
+        p.product_description,
+        p.product_type,
+        p.product_photo_path,
+        (SELECT json_agg(row_to_json(pc)) FROM product_characteristics pc WHERE pc.product_id = p.product_id) AS product_characteristics,
+        (SELECT json_agg(row_to_json(pc)) FROM product_comments pc WHERE pc.product_id = p.product_id) AS product_comments
+    FROM
+        products p
+    WHERE
+        p.product_id = productId;
+END;
+$$;
+
+
+ALTER FUNCTION public.get_product(productid bigint) OWNER TO programmer;
+
+--
+-- TOC entry 284 (class 1255 OID 17273)
+-- Name: get_product_comments(bigint); Type: FUNCTION; Schema: public; Owner: programmer
+--
+
+CREATE FUNCTION public.get_product_comments(productid bigint) RETURNS TABLE(user_name text, user_lastname text, user_email text, comment_date date, comment_text text, user_id bigint)
+    LANGUAGE plpgsql
+    AS $$ begin return query
+select usr.user_name,
+	usr.user_lasname,
+	usr.user_email,
+	com.comment_date,
+	com.comment_text,
+	usr.user_id
+from product_comments as com
+	join users as usr on com.user_id = usr.user_id
+	and com.product_id = productId;
+end;
+$$;
+
+
+ALTER FUNCTION public.get_product_comments(productid bigint) OWNER TO programmer;
+
+--
+-- TOC entry 313 (class 1255 OID 33791)
+-- Name: get_products(real, real, character varying, integer, character varying, json, json); Type: FUNCTION; Schema: public; Owner: programmer
+--
+
+CREATE FUNCTION public.get_products(min_price real DEFAULT 0, max_price real DEFAULT 9999999, type_filter character varying DEFAULT NULL::character varying, amount_filter integer DEFAULT NULL::integer, brand_filter character varying DEFAULT NULL::character varying, characteristics_filter json DEFAULT NULL::json, sort_order json DEFAULT NULL::json) RETURNS TABLE(product_id bigint, product_name character varying, product_brand character varying, product_price real, product_amount integer, product_description character varying, product_type character varying, product_photo_path character varying, product_characteristics json)
+    LANGUAGE plpgsql
+    AS $$ BEGIN -- Сформируем часть запроса для фильтра по характеристикам товара
+	-- Возвращаем результат запроса к таблице товаров с учетом фильтров и сортировки
+	RETURN QUERY
+SELECT p.product_id,
+	p.product_name,
+	p.product_brand,
+	p.product_price,
+	p.product_amount,
+	p.product_description,
+	p.product_type,
+	p.product_photo_path,
+	cast(
+		(
+			select json_agg(
+					json_build_object(
+						'name',
+						pc.product_characteristics_name,
+						'value',
+						pc.product_characteristics_value
+					)
+				) AS product_characteristics
+			from product_characteristics pc
+			where pc.product_id = p.product_id
+		) as json
+	)
+FROM products p
+WHERE p.product_price BETWEEN min_price AND max_price
+	AND (
+		type_filter IS NULL
+		OR p.product_type = type_filter
+	)
+	AND (
+		amount_filter IS NULL
+		OR p.product_amount = amount_filter
+	)
+	AND (
+		brand_filter IS NULL
+		OR p.product_brand = brand_filter
+	);
+END;
+$$;
+
+
+ALTER FUNCTION public.get_products(min_price real, max_price real, type_filter character varying, amount_filter integer, brand_filter character varying, characteristics_filter json, sort_order json) OWNER TO programmer;
+
+--
+-- TOC entry 285 (class 1255 OID 16754)
+-- Name: import_json(text); Type: PROCEDURE; Schema: public; Owner: programmer
+--
+
+CREATE PROCEDURE public.import_json(IN pathtoget text)
+    LANGUAGE plpgsql
+    AS $$
+	declare 
+		usersJson json;
+		usersPasswordsJson json;
+		usersAddressesJson json;
+		basketJson json;
+		favoritesJson json;
+		ordersJson json;
+		ordersProductsJson json;
+		productsJson json;
+		productCharacteristicsJson json;
+		productCommentsJson json;
+	BEGIN
+		--EXECUTE format('Copy usersJson from %L',pathToGet||'/users.json');
+		SELECT pg_read_file(pathToGet || '/users.json') INTO usersJson;
+		SELECT pg_read_file(pathToGet || '/users_passwords.json') INTO usersPasswordsJson;
+		SELECT pg_read_file(pathToGet || '/users_addresses.json') INTO usersAddressesJson;
+		SELECT pg_read_file(pathToGet || '/basket.json') INTO basketJson;
+		SELECT pg_read_file(pathToGet || '/favorites.json') INTO favoritesJson;
+		SELECT pg_read_file(pathToGet || '/orders.json') INTO ordersJson;
+		SELECT pg_read_file(pathToGet || '/orders_products.json') INTO ordersProductsJson;
+		SELECT pg_read_file(pathToGet || '/products.json') INTO productsJson;
+		SELECT pg_read_file(pathToGet || '/product_characteristics.json') INTO productCharacteristicsJson;
+		SELECT pg_read_file(pathToGet || '/product_comments.json') INTO productCommentsJson;
+		INSERT into users select * from json_populate_recordset(null::users,usersJson);
+		INSERT into users_passwords select * from json_populate_recordset(null::users_passwords,usersPasswordsJson);
+		INSERT into users_addresses select * from json_populate_recordset(null::users_addresses,usersAddressesJson);
+		INSERT into basket select * from json_populate_recordset(null::basket,basketJson);
+		INSERT into favorites select * from json_populate_recordset(null::favorites,favoritesJson);
+		INSERT into orders select * from json_populate_recordset(null::orders,ordersJson);
+		INSERT into orders_products select * from json_populate_recordset(null::orders_products,ordersProductsJson);
+		INSERT into products select * from json_populate_recordset(null::products,productsJson);
+		INSERT into product_characteristics select * from json_populate_recordset(null::product_characteristics,productCharacteristicsJson);
+		INSERT into product_comments select * from json_populate_recordset(null::product_comments,productCommentsJson);
+	end;
+$$;
+
+
+ALTER PROCEDURE public.import_json(IN pathtoget text) OWNER TO programmer;
+
+--
+-- TOC entry 311 (class 1255 OID 33820)
+-- Name: log_user(text, text); Type: FUNCTION; Schema: public; Owner: programmer
+--
+
+CREATE FUNCTION public.log_user(email text, password text) RETURNS bigint
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+	IF (
+		SELECT COUNT(*) <> 1
+		FROM (
+			SELECT user_email
+			FROM users
+			WHERE user_email = email
+		) AS usrmail
+	) THEN
+		RAISE EXCEPTION 'Error: Неправильный логин или пароль';
+	ELSEIF (
+		SELECT pass_hesh = crypt(password, pass_hesh)
+		FROM (
+			SELECT *
+			FROM users
+			WHERE user_email = email
+		) AS usr
+		JOIN users_passwords AS psw ON psw.user_id = usr.user_id
+	) THEN
+		RETURN (
+			SELECT user_id
+			FROM users
+			WHERE user_email = email
+		);
+	ELSE
+		RAISE EXCEPTION 'Error: Неправильный логин или пароль';
+	END IF;
+END;
+$$;
+
+
+ALTER FUNCTION public.log_user(email text, password text) OWNER TO programmer;
+
+--
+-- TOC entry 283 (class 1255 OID 16621)
+-- Name: reg_user(text, text, text, text, text); Type: FUNCTION; Schema: public; Owner: programmer
+--
+
+CREATE FUNCTION public.reg_user(username text, userlastname text, useremail text, userphone text, userpassword text) RETURNS text
+    LANGUAGE plpgsql
+    AS $$ begin if (
+		select count(*)
+		from (
+				select *
+				from users
+				where user_email = UserEmail
+			) as usr
+	) <> 0 then raise exception 'Error: Данный пользователь уже зарегестрирован';
+else
+INSERT into users(
+		user_id,
+		user_name,
+		user_lastname,
+		user_email,
+		user_phone
+	)
+values(
+		nextval('users_id'),
+		UserName,
+		UserLastname,
+		UserEmail,
+		UserPhone
+	);
+insert into users_passwords(user_id, pass_hesh)
+values(
+		currval('users_id'),
+		crypt(UserPassword, gen_salt('md5'))
+	);
+return currval('users_id');
+end if;
+end;
+$$;
+
+
+ALTER FUNCTION public.reg_user(username text, userlastname text, useremail text, userphone text, userpassword text) OWNER TO programmer;
+
+--
+-- TOC entry 300 (class 1255 OID 25574)
+-- Name: update_address(bigint, character varying, character varying, character varying, character varying, character varying, boolean); Type: PROCEDURE; Schema: public; Owner: programmer
+--
+
+CREATE PROCEDURE public.update_address(IN addressid bigint, IN regionin character varying, IN cityin character varying, IN streetin character varying, IN housein character varying, IN apartmentin character varying, IN is_savedin boolean)
+    LANGUAGE plpgsql
+    AS $$begin
+update users_addresses
+set region = COALESCE(regionIn, region),
+	city = COALESCE(cityIn, city),
+	street = COALESCE(streetIn, street),
+	house = COALESCE(houseIn, house),
+	apartment = COALESCE(apartmentIn, apartment),
+	is_saved = COALESCE(is_savedIn, is_saved)
+where address_id = addressId;
+end;
+$$;
+
+
+ALTER PROCEDURE public.update_address(IN addressid bigint, IN regionin character varying, IN cityin character varying, IN streetin character varying, IN housein character varying, IN apartmentin character varying, IN is_savedin boolean) OWNER TO programmer;
+
+--
+-- TOC entry 306 (class 1255 OID 17265)
+-- Name: update_basket(bigint, bigint, integer); Type: PROCEDURE; Schema: public; Owner: programmer
+--
+
+CREATE PROCEDURE public.update_basket(IN productid bigint, IN userid bigint, IN newamount integer)
+    LANGUAGE plpgsql
+    AS $$
+begin 
+	if newAmount<=0 then raise exception 'Error: Неверное количество товара';
+	elseif newAmount>(select product_amount from products where product_id=productId)
+		then raise exception 'Error: Указано больше товара чем есть на складе';
+	else 
+		update basket set product_amount=newAmount where product_id=productId and user_id=userId;
+	end if;	
+end;
+$$;
+
+
+ALTER PROCEDURE public.update_basket(IN productid bigint, IN userid bigint, IN newamount integer) OWNER TO programmer;
+
+--
+-- TOC entry 291 (class 1255 OID 16914)
+-- Name: update_comment(bigint, bigint, character varying); Type: PROCEDURE; Schema: public; Owner: programmer
+--
+
+CREATE PROCEDURE public.update_comment(IN commentid bigint, IN userid bigint, IN commenttext character varying)
+    LANGUAGE plpgsql
+    AS $$ begin if (
+		select user_id
+		from (
+				select *
+				from product_comments
+				where comment_id = commentId
+			) as commID
+	) = userId then
+update product_comments
+set comment_text = commentText,
+	comment_date = NOW()
+where comment_id = commentId;
+else raise exception 'Error: Попытка редактировать не свой комментарий';
+end if;
+end;
+$$;
+
+
+ALTER PROCEDURE public.update_comment(IN commentid bigint, IN userid bigint, IN commenttext character varying) OWNER TO programmer;
+
+--
+-- TOC entry 298 (class 1255 OID 17364)
+-- Name: update_order(bigint, text, bigint, json); Type: PROCEDURE; Schema: public; Owner: programmer
+--
+
+CREATE PROCEDURE public.update_order(IN orderid bigint, IN deliverytype text DEFAULT NULL::text, IN addressid bigint DEFAULT NULL::bigint, IN productslist json DEFAULT NULL::json)
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    total_cost REAL := 0;
+    total_cost_existing REAL := 0;
+    product_price REAL := 0;
+    product_count INTEGER := 0;
+    cur CURSOR FOR 
+        SELECT p.product_price,
+               op.product_count
+        FROM product_list op
+        JOIN PRODUCTS p ON op.product_id = p.product_id;
+BEGIN
+    -- Создаем временную таблицу для списка продуктов из JSON
+    CREATE TEMP TABLE product_list(
+        PRODUCT_ID BIGINT NOT NULL,
+        PRODUCT_COUNT INTEGER NOT NULL
+    );
+    -- Заполняем таблицу данными из JSON
+    INSERT INTO product_list
+    SELECT *
+    FROM json_populate_recordset(NULL::product_list, productsList);
+
+    -- Считаем общую стоимость заказа
+    OPEN cur;
+    LOOP 
+        FETCH cur INTO product_price, product_count;
+        EXIT WHEN NOT FOUND;
+        total_cost := total_cost + product_price * product_count;
+    END LOOP;
+    CLOSE cur;
+
+    -- Если общая стоимость заказа равна 0, то берем существующее значение
+    IF total_cost = 0 THEN
+        SELECT ORDER_FULL_PRICE INTO total_cost_existing
+        FROM orders
+        WHERE order_id = orderId;
+        total_cost := total_cost_existing;
+    END IF;
+
+    -- Обновляем информацию о заказе
+    UPDATE orders
+    SET 
+        ORDER_DELIVER_TYPE = COALESCE(deliveryType, ORDER_DELIVER_TYPE),
+        address_id = COALESCE(AddressId, address_id),
+        ORDER_FULL_PRICE = total_cost
+    WHERE order_id = orderId;
+
+    -- Удаляем старые записи о продуктах в заказе
+    DELETE FROM orders_products
+    WHERE order_id = orderId;
+
+    -- Добавляем новые записи о продуктах в заказе
+    INSERT INTO orders_products
+    SELECT orderId, *
+    FROM product_list;
+END;
+$$;
+
+
+ALTER PROCEDURE public.update_order(IN orderid bigint, IN deliverytype text, IN addressid bigint, IN productslist json) OWNER TO programmer;
+
+--
+-- TOC entry 303 (class 1255 OID 25572)
+-- Name: update_order_status(bigint, text); Type: PROCEDURE; Schema: public; Owner: programmer
+--
+
+CREATE PROCEDURE public.update_order_status(IN orderid bigint, IN newstatus text)
+    LANGUAGE plpgsql
+    AS $$begin
+update orders
+set order_status = newStatus
+where order_id = orderId;
+end;
+$$;
+
+
+ALTER PROCEDURE public.update_order_status(IN orderid bigint, IN newstatus text) OWNER TO programmer;
+
+--
+-- TOC entry 305 (class 1255 OID 17358)
+-- Name: update_product(bigint, text, text, double precision, integer, text, text, text, json); Type: PROCEDURE; Schema: public; Owner: programmer
+--
+
+CREATE PROCEDURE public.update_product(IN productid bigint, IN productname text DEFAULT NULL::text, IN productbrand text DEFAULT NULL::text, IN productprice double precision DEFAULT NULL::double precision, IN productamount integer DEFAULT NULL::integer, IN productdescription text DEFAULT NULL::text, IN producttype text DEFAULT NULL::text, IN productphotopath text DEFAULT NULL::text, IN productcharacteristic json DEFAULT NULL::json)
+    LANGUAGE plpgsql
+    AS $$ BEGIN
+UPDATE products
+SET product_name = COALESCE(productName, product_name),
+	product_brand = COALESCE(productBrand, product_brand),
+	product_price = COALESCE(productPrice, product_price),
+	product_amount = COALESCE(productAmount, product_amount),
+	product_description = COALESCE(productDescription, product_description),
+	product_type = COALESCE(productType, product_type),
+	product_photo_path = COALESCE(productPhotoPath, product_photo_path)
+WHERE product_id = productID;
+IF productCharacteristic IS NOT NULL THEN 
+declare pc json :=productCharacteristic;
+begin
+FOR i IN 0..json_array_length(pc) - 1 LOOP
+    DELETE FROM product_characteristics
+    WHERE product_id = productID
+        AND product_characteristics_name <> (pc->>i)::json->>'name';
+END LOOP;
+end;
+CALL add_product_characteristic(productID,productCharacteristic);
+END IF;
+END;
+$$;
+
+
+ALTER PROCEDURE public.update_product(IN productid bigint, IN productname text, IN productbrand text, IN productprice double precision, IN productamount integer, IN productdescription text, IN producttype text, IN productphotopath text, IN productcharacteristic json) OWNER TO programmer;
+
+--
+-- TOC entry 312 (class 1255 OID 33822)
+-- Name: update_user(bigint, text, text, text, text, text); Type: PROCEDURE; Schema: public; Owner: programmer
+--
+
+CREATE PROCEDURE public.update_user(IN userid bigint, IN useremail text, IN username text DEFAULT NULL::text, IN userlastname text DEFAULT NULL::text, IN userphone text DEFAULT NULL::text, IN newpass text DEFAULT NULL::text)
+    LANGUAGE plpgsql
+    AS $$
+begin 
+update users
+set user_name = COALESCE(UserName, user_name),
+	user_lastName = COALESCE(UserLastName, user_lastname),
+	user_email = COALESCE(UserEmail, user_email),
+	user_phone = COALESCE(UserPhone, user_phone)
+where user_id = userId;
+if NewPass is not null then
+update users_passwords
+set pass_hesh = crypt(NewPass, gen_salt('md5'))
+where user_id = user_id;
+end if;
+end;
+$$;
+
+
+ALTER PROCEDURE public.update_user(IN userid bigint, IN useremail text, IN username text, IN userlastname text, IN userphone text, IN newpass text) OWNER TO programmer;
+
+SET default_tablespace = users;
+
+SET default_table_access_method = heap;
+
+--
+-- TOC entry 223 (class 1259 OID 17246)
+-- Name: basket; Type: TABLE; Schema: public; Owner: programmer; Tablespace: users
+--
+
+CREATE TABLE public.basket (
+    basket_id bigint NOT NULL,
+    product_id bigint NOT NULL,
+    user_id bigint NOT NULL,
+    product_amount integer NOT NULL,
+    CONSTRAINT basket_product_amount_check CHECK ((product_amount > 0))
+);
+
+
+ALTER TABLE public.basket OWNER TO programmer;
+
+--
+-- TOC entry 224 (class 1259 OID 17268)
+-- Name: basket_id; Type: SEQUENCE; Schema: public; Owner: programmer
+--
+
+CREATE SEQUENCE public.basket_id
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.basket_id OWNER TO programmer;
+
+--
+-- TOC entry 3560 (class 0 OID 0)
+-- Dependencies: 224
+-- Name: basket_id; Type: SEQUENCE OWNED BY; Schema: public; Owner: programmer
+--
+
+ALTER SEQUENCE public.basket_id OWNED BY public.basket.basket_id;
+
+
+SET default_tablespace = products;
+
+--
+-- TOC entry 220 (class 1259 OID 17195)
+-- Name: product_comments; Type: TABLE; Schema: public; Owner: programmer; Tablespace: products
+--
+
+CREATE TABLE public.product_comments (
+    comment_id bigint NOT NULL,
+    product_id bigint NOT NULL,
+    user_id bigint NOT NULL,
+    comment_date date NOT NULL,
+    comment_text character varying(1023) NOT NULL
+);
+
+
+ALTER TABLE public.product_comments OWNER TO programmer;
+
+--
+-- TOC entry 213 (class 1259 OID 16747)
+-- Name: comment_id; Type: SEQUENCE; Schema: public; Owner: programmer
+--
+
+CREATE SEQUENCE public.comment_id
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.comment_id OWNER TO programmer;
+
+--
+-- TOC entry 3561 (class 0 OID 0)
+-- Dependencies: 213
+-- Name: comment_id; Type: SEQUENCE OWNED BY; Schema: public; Owner: programmer
+--
+
+ALTER SEQUENCE public.comment_id OWNED BY public.product_comments.comment_id;
+
+
+SET default_tablespace = users;
+
+--
+-- TOC entry 221 (class 1259 OID 17227)
+-- Name: favorites; Type: TABLE; Schema: public; Owner: programmer; Tablespace: users
+--
+
+CREATE TABLE public.favorites (
+    favorite_id bigint NOT NULL,
+    product_id bigint NOT NULL,
+    user_id bigint NOT NULL
+);
+
+
+ALTER TABLE public.favorites OWNER TO programmer;
+
+--
+-- TOC entry 225 (class 1259 OID 17269)
+-- Name: favorite_id; Type: SEQUENCE; Schema: public; Owner: programmer
+--
+
+CREATE SEQUENCE public.favorite_id
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.favorite_id OWNER TO programmer;
+
+--
+-- TOC entry 3562 (class 0 OID 0)
+-- Dependencies: 225
+-- Name: favorite_id; Type: SEQUENCE OWNED BY; Schema: public; Owner: programmer
+--
+
+ALTER SEQUENCE public.favorite_id OWNED BY public.favorites.favorite_id;
+
+
+SET default_tablespace = orders;
+
+--
+-- TOC entry 217 (class 1259 OID 17151)
+-- Name: orders; Type: TABLE; Schema: public; Owner: programmer; Tablespace: orders
+--
+
+CREATE TABLE public.orders (
+    order_id bigint NOT NULL,
+    user_id bigint NOT NULL,
+    order_date date NOT NULL,
+    order_status character varying(255) NOT NULL,
+    order_full_price real NOT NULL,
+    order_deliver_type character varying(255) NOT NULL,
+    address_id bigint NOT NULL
+);
+
+
+ALTER TABLE public.orders OWNER TO programmer;
+
+--
+-- TOC entry 226 (class 1259 OID 17359)
+-- Name: orders_id; Type: SEQUENCE; Schema: public; Owner: programmer
+--
+
+CREATE SEQUENCE public.orders_id
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.orders_id OWNER TO programmer;
+
+--
+-- TOC entry 3563 (class 0 OID 0)
+-- Dependencies: 226
+-- Name: orders_id; Type: SEQUENCE OWNED BY; Schema: public; Owner: programmer
+--
+
+ALTER SEQUENCE public.orders_id OWNED BY public.orders.order_id;
+
+
+--
+-- TOC entry 219 (class 1259 OID 17170)
+-- Name: orders_products; Type: TABLE; Schema: public; Owner: programmer; Tablespace: orders
+--
+
+CREATE TABLE public.orders_products (
+    order_id bigint NOT NULL,
+    product_id bigint NOT NULL,
+    product_count integer NOT NULL
+);
+
+
+ALTER TABLE public.orders_products OWNER TO programmer;
+
+SET default_tablespace = '';
+
+--
+-- TOC entry 211 (class 1259 OID 16544)
+-- Name: postgres_log; Type: TABLE; Schema: public; Owner: programmer
+--
+
+CREATE TABLE public.postgres_log (
+    log_time timestamp(3) with time zone,
+    user_name text,
+    database_name text,
+    process_id integer,
+    connection_from text,
+    session_id text NOT NULL,
+    session_line_num bigint NOT NULL,
+    command_tag text,
+    session_start_time timestamp with time zone,
+    virtual_transaction_id text,
+    transaction_id bigint,
+    error_severity text,
+    sql_state_code text,
+    message text,
+    detail text,
+    hint text,
+    internal_query text,
+    internal_query_pos integer,
+    context text,
+    query text,
+    query_pos integer,
+    location text,
+    application_name text,
+    backend_type text,
+    add_data1 text,
+    add_data2 text
+);
+
+
+ALTER TABLE public.postgres_log OWNER TO programmer;
+
+--
+-- TOC entry 227 (class 1259 OID 17365)
+-- Name: product_characteristics_characteristic_id_seq; Type: SEQUENCE; Schema: public; Owner: programmer
+--
+
+CREATE SEQUENCE public.product_characteristics_characteristic_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.product_characteristics_characteristic_id_seq OWNER TO programmer;
+
+SET default_tablespace = products;
+
+--
+-- TOC entry 228 (class 1259 OID 17366)
+-- Name: product_characteristics; Type: TABLE; Schema: public; Owner: programmer; Tablespace: products
+--
+
+CREATE TABLE public.product_characteristics (
+    characteristic_id integer DEFAULT nextval('public.product_characteristics_characteristic_id_seq'::regclass) NOT NULL,
+    product_id bigint NOT NULL,
+    product_characteristics_name character varying(255) NOT NULL,
+    product_characteristics_value character varying(255) NOT NULL
+);
+
+
+ALTER TABLE public.product_characteristics OWNER TO programmer;
+
+--
+-- TOC entry 212 (class 1259 OID 16658)
+-- Name: product_id; Type: SEQUENCE; Schema: public; Owner: programmer
+--
+
+CREATE SEQUENCE public.product_id
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.product_id OWNER TO programmer;
+
+--
+-- TOC entry 218 (class 1259 OID 17163)
+-- Name: products; Type: TABLE; Schema: public; Owner: programmer; Tablespace: products
+--
+
+CREATE TABLE public.products (
+    product_id bigint NOT NULL,
+    product_name character varying(511) NOT NULL,
+    product_brand character varying(255) NOT NULL,
+    product_price real NOT NULL,
+    product_amount integer NOT NULL,
+    product_description character varying(1023) NOT NULL,
+    product_type character varying(255),
+    product_photo_path character varying(511)
+);
+
+
+ALTER TABLE public.products OWNER TO programmer;
+
+SET default_tablespace = users;
+
+--
+-- TOC entry 214 (class 1259 OID 17124)
+-- Name: users; Type: TABLE; Schema: public; Owner: programmer; Tablespace: users
+--
+
+CREATE TABLE public.users (
+    user_id bigint NOT NULL,
+    user_name character varying(255) NOT NULL,
+    user_lastname character varying(255) NOT NULL,
+    user_email character varying(255) NOT NULL,
+    user_phone character varying(255) NOT NULL
+);
+
+
+ALTER TABLE public.users OWNER TO programmer;
+
+--
+-- TOC entry 216 (class 1259 OID 17139)
+-- Name: users_addresses; Type: TABLE; Schema: public; Owner: programmer; Tablespace: users
+--
+
+CREATE TABLE public.users_addresses (
+    user_id bigint NOT NULL,
+    region character varying(255) NOT NULL,
+    city character varying(255) NOT NULL,
+    street character varying(255) NOT NULL,
+    house character varying(255) NOT NULL,
+    apartment character varying(255) NOT NULL,
+    is_saved boolean NOT NULL,
+    address_id bigint NOT NULL
+);
+
+
+ALTER TABLE public.users_addresses OWNER TO programmer;
+
+--
+-- TOC entry 222 (class 1259 OID 17245)
+-- Name: users_id; Type: SEQUENCE; Schema: public; Owner: programmer
+--
+
+CREATE SEQUENCE public.users_id
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.users_id OWNER TO programmer;
+
+--
+-- TOC entry 215 (class 1259 OID 17131)
+-- Name: users_passwords; Type: TABLE; Schema: public; Owner: programmer; Tablespace: users
+--
+
+CREATE TABLE public.users_passwords (
+    user_id bigint NOT NULL,
+    pass_hesh character varying(48) NOT NULL
+);
+
+
+ALTER TABLE public.users_passwords OWNER TO programmer;
+
+SET default_tablespace = '';
+
+--
+-- TOC entry 3370 (class 2606 OID 17251)
+-- Name: basket basket_pkey; Type: CONSTRAINT; Schema: public; Owner: programmer
+--
+
+ALTER TABLE ONLY public.basket
+    ADD CONSTRAINT basket_pkey PRIMARY KEY (basket_id);
+
+
+--
+-- TOC entry 3366 (class 2606 OID 17231)
+-- Name: favorites favorites_pkey; Type: CONSTRAINT; Schema: public; Owner: programmer
+--
+
+ALTER TABLE ONLY public.favorites
+    ADD CONSTRAINT favorites_pkey PRIMARY KEY (favorite_id);
+
+
+--
+-- TOC entry 3355 (class 2606 OID 17157)
+-- Name: orders orders_pkey; Type: CONSTRAINT; Schema: public; Owner: programmer
+--
+
+ALTER TABLE ONLY public.orders
+    ADD CONSTRAINT orders_pkey PRIMARY KEY (order_id);
+
+
+--
+-- TOC entry 3343 (class 2606 OID 16550)
+-- Name: postgres_log postgres_log_pkey; Type: CONSTRAINT; Schema: public; Owner: programmer
+--
+
+ALTER TABLE ONLY public.postgres_log
+    ADD CONSTRAINT postgres_log_pkey PRIMARY KEY (session_id, session_line_num);
+
+
+--
+-- TOC entry 3375 (class 2606 OID 17373)
+-- Name: product_characteristics product_characteristics_pkey; Type: CONSTRAINT; Schema: public; Owner: programmer
+--
+
+ALTER TABLE ONLY public.product_characteristics
+    ADD CONSTRAINT product_characteristics_pkey PRIMARY KEY (characteristic_id);
+
+
+--
+-- TOC entry 3364 (class 2606 OID 17201)
+-- Name: product_comments product_comments_pkey; Type: CONSTRAINT; Schema: public; Owner: programmer
+--
+
+ALTER TABLE ONLY public.product_comments
+    ADD CONSTRAINT product_comments_pkey PRIMARY KEY (comment_id);
+
+
+--
+-- TOC entry 3358 (class 2606 OID 17169)
+-- Name: products products_pkey; Type: CONSTRAINT; Schema: public; Owner: programmer
+--
+
+ALTER TABLE ONLY public.products
+    ADD CONSTRAINT products_pkey PRIMARY KEY (product_id);
+
+
+--
+-- TOC entry 3377 (class 2606 OID 25576)
+-- Name: product_characteristics uq_product_characteristics_name_value; Type: CONSTRAINT; Schema: public; Owner: programmer
+--
+
+ALTER TABLE ONLY public.product_characteristics
+    ADD CONSTRAINT uq_product_characteristics_name_value UNIQUE (product_id, product_characteristics_name, product_characteristics_value);
+
+
+--
+-- TOC entry 3351 (class 2606 OID 33790)
+-- Name: users_addresses users_addresses_pkey; Type: CONSTRAINT; Schema: public; Owner: programmer
+--
+
+ALTER TABLE ONLY public.users_addresses
+    ADD CONSTRAINT users_addresses_pkey PRIMARY KEY (address_id);
+
+
+--
+-- TOC entry 3347 (class 2606 OID 17130)
+-- Name: users users_pkey; Type: CONSTRAINT; Schema: public; Owner: programmer
+--
+
+ALTER TABLE ONLY public.users
+    ADD CONSTRAINT users_pkey PRIMARY KEY (user_id);
+
+
+SET default_tablespace = users;
+
+--
+-- TOC entry 3371 (class 1259 OID 33816)
+-- Name: idx_basket_product_id; Type: INDEX; Schema: public; Owner: programmer; Tablespace: users
+--
+
+CREATE INDEX idx_basket_product_id ON public.basket USING btree (product_id);
+
+
+--
+-- TOC entry 3372 (class 1259 OID 33815)
+-- Name: idx_basket_user_id; Type: INDEX; Schema: public; Owner: programmer; Tablespace: users
+--
+
+CREATE INDEX idx_basket_user_id ON public.basket USING btree (user_id);
+
+
+--
+-- TOC entry 3367 (class 1259 OID 33818)
+-- Name: idx_favorites_product_id; Type: INDEX; Schema: public; Owner: programmer; Tablespace: users
+--
+
+CREATE INDEX idx_favorites_product_id ON public.favorites USING btree (product_id);
+
+
+--
+-- TOC entry 3368 (class 1259 OID 33817)
+-- Name: idx_favorites_user_id; Type: INDEX; Schema: public; Owner: programmer; Tablespace: users
+--
+
+CREATE INDEX idx_favorites_user_id ON public.favorites USING btree (user_id);
+
+
+SET default_tablespace = orders;
+
+--
+-- TOC entry 3352 (class 1259 OID 33808)
+-- Name: idx_orders_order_date; Type: INDEX; Schema: public; Owner: programmer; Tablespace: orders
+--
+
+CREATE INDEX idx_orders_order_date ON public.orders USING btree (order_date);
+
+
+--
+-- TOC entry 3359 (class 1259 OID 33810)
+-- Name: idx_orders_products_order_id; Type: INDEX; Schema: public; Owner: programmer; Tablespace: orders
+--
+
+CREATE INDEX idx_orders_products_order_id ON public.orders_products USING btree (order_id);
+
+
+--
+-- TOC entry 3360 (class 1259 OID 33811)
+-- Name: idx_orders_products_product_id; Type: INDEX; Schema: public; Owner: programmer; Tablespace: orders
+--
+
+CREATE INDEX idx_orders_products_product_id ON public.orders_products USING btree (product_id);
+
+
+--
+-- TOC entry 3353 (class 1259 OID 33807)
+-- Name: idx_orders_user_id; Type: INDEX; Schema: public; Owner: programmer; Tablespace: orders
+--
+
+CREATE INDEX idx_orders_user_id ON public.orders USING btree (user_id);
+
+
+SET default_tablespace = products;
+
+--
+-- TOC entry 3373 (class 1259 OID 33812)
+-- Name: idx_product_characteristics_product_id; Type: INDEX; Schema: public; Owner: programmer; Tablespace: products
+--
+
+CREATE INDEX idx_product_characteristics_product_id ON public.product_characteristics USING btree (product_id);
+
+
+--
+-- TOC entry 3361 (class 1259 OID 33813)
+-- Name: idx_product_comments_product_id; Type: INDEX; Schema: public; Owner: programmer; Tablespace: products
+--
+
+CREATE INDEX idx_product_comments_product_id ON public.product_comments USING btree (product_id);
+
+
+--
+-- TOC entry 3362 (class 1259 OID 33814)
+-- Name: idx_product_comments_user_id; Type: INDEX; Schema: public; Owner: programmer; Tablespace: products
+--
+
+CREATE INDEX idx_product_comments_user_id ON public.product_comments USING btree (user_id);
+
+
+--
+-- TOC entry 3356 (class 1259 OID 33809)
+-- Name: idx_products_product_name; Type: INDEX; Schema: public; Owner: programmer; Tablespace: products
+--
+
+CREATE INDEX idx_products_product_name ON public.products USING btree (product_name);
+
+
+SET default_tablespace = users;
+
+--
+-- TOC entry 3349 (class 1259 OID 33806)
+-- Name: idx_users_addresses_user_id; Type: INDEX; Schema: public; Owner: programmer; Tablespace: users
+--
+
+CREATE INDEX idx_users_addresses_user_id ON public.users_addresses USING btree (user_id);
+
+
+--
+-- TOC entry 3348 (class 1259 OID 33805)
+-- Name: idx_users_passwords_user_id; Type: INDEX; Schema: public; Owner: programmer; Tablespace: users
+--
+
+CREATE INDEX idx_users_passwords_user_id ON public.users_passwords USING btree (user_id);
+
+
+--
+-- TOC entry 3344 (class 1259 OID 33804)
+-- Name: idx_users_user_email; Type: INDEX; Schema: public; Owner: programmer; Tablespace: users
+--
+
+CREATE INDEX idx_users_user_email ON public.users USING btree (user_email);
+
+
+--
+-- TOC entry 3345 (class 1259 OID 33803)
+-- Name: idx_users_user_name; Type: INDEX; Schema: public; Owner: programmer; Tablespace: users
+--
+
+CREATE INDEX idx_users_user_name ON public.users USING btree (user_name);
+
+
+--
+-- TOC entry 3390 (class 2620 OID 17303)
+-- Name: orders delete_not_saved_address; Type: TRIGGER; Schema: public; Owner: programmer
+--
+
+CREATE TRIGGER delete_not_saved_address BEFORE DELETE ON public.orders FOR EACH ROW EXECUTE FUNCTION public.delete_not_saved_address();
+
+
+--
+-- TOC entry 3381 (class 2606 OID 17173)
+-- Name: orders_products fk_order_id_orders_products; Type: FK CONSTRAINT; Schema: public; Owner: programmer
+--
+
+ALTER TABLE ONLY public.orders_products
+    ADD CONSTRAINT fk_order_id_orders_products FOREIGN KEY (order_id) REFERENCES public.orders(order_id) ON DELETE CASCADE;
+
+
+--
+-- TOC entry 3388 (class 2606 OID 17257)
+-- Name: basket fk_product_id_basket; Type: FK CONSTRAINT; Schema: public; Owner: programmer
+--
+
+ALTER TABLE ONLY public.basket
+    ADD CONSTRAINT fk_product_id_basket FOREIGN KEY (product_id) REFERENCES public.products(product_id) ON DELETE CASCADE;
+
+
+--
+-- TOC entry 3386 (class 2606 OID 17237)
+-- Name: favorites fk_product_id_favorites; Type: FK CONSTRAINT; Schema: public; Owner: programmer
+--
+
+ALTER TABLE ONLY public.favorites
+    ADD CONSTRAINT fk_product_id_favorites FOREIGN KEY (product_id) REFERENCES public.products(product_id) ON DELETE CASCADE;
+
+
+--
+-- TOC entry 3382 (class 2606 OID 17178)
+-- Name: orders_products fk_product_id_orders_products; Type: FK CONSTRAINT; Schema: public; Owner: programmer
+--
+
+ALTER TABLE ONLY public.orders_products
+    ADD CONSTRAINT fk_product_id_orders_products FOREIGN KEY (product_id) REFERENCES public.products(product_id);
+
+
+--
+-- TOC entry 3389 (class 2606 OID 17374)
+-- Name: product_characteristics fk_product_id_product_characteristics; Type: FK CONSTRAINT; Schema: public; Owner: programmer
+--
+
+ALTER TABLE ONLY public.product_characteristics
+    ADD CONSTRAINT fk_product_id_product_characteristics FOREIGN KEY (product_id) REFERENCES public.products(product_id) ON DELETE CASCADE;
+
+
+--
+-- TOC entry 3384 (class 2606 OID 17207)
+-- Name: product_comments fk_product_id_product_comment; Type: FK CONSTRAINT; Schema: public; Owner: programmer
+--
+
+ALTER TABLE ONLY public.product_comments
+    ADD CONSTRAINT fk_product_id_product_comment FOREIGN KEY (product_id) REFERENCES public.products(product_id) ON DELETE CASCADE;
+
+
+--
+-- TOC entry 3379 (class 2606 OID 17146)
+-- Name: users_addresses fk_user_id_addresses; Type: FK CONSTRAINT; Schema: public; Owner: programmer
+--
+
+ALTER TABLE ONLY public.users_addresses
+    ADD CONSTRAINT fk_user_id_addresses FOREIGN KEY (user_id) REFERENCES public.users(user_id) ON DELETE CASCADE;
+
+
+--
+-- TOC entry 3387 (class 2606 OID 17252)
+-- Name: basket fk_user_id_basket; Type: FK CONSTRAINT; Schema: public; Owner: programmer
+--
+
+ALTER TABLE ONLY public.basket
+    ADD CONSTRAINT fk_user_id_basket FOREIGN KEY (user_id) REFERENCES public.users(user_id) ON DELETE CASCADE;
+
+
+--
+-- TOC entry 3385 (class 2606 OID 17232)
+-- Name: favorites fk_user_id_favorites; Type: FK CONSTRAINT; Schema: public; Owner: programmer
+--
+
+ALTER TABLE ONLY public.favorites
+    ADD CONSTRAINT fk_user_id_favorites FOREIGN KEY (user_id) REFERENCES public.users(user_id) ON DELETE CASCADE;
+
+
+--
+-- TOC entry 3380 (class 2606 OID 17158)
+-- Name: orders fk_user_id_orders; Type: FK CONSTRAINT; Schema: public; Owner: programmer
+--
+
+ALTER TABLE ONLY public.orders
+    ADD CONSTRAINT fk_user_id_orders FOREIGN KEY (user_id) REFERENCES public.users(user_id) ON DELETE CASCADE;
+
+
+--
+-- TOC entry 3378 (class 2606 OID 17134)
+-- Name: users_passwords fk_user_id_password; Type: FK CONSTRAINT; Schema: public; Owner: programmer
+--
+
+ALTER TABLE ONLY public.users_passwords
+    ADD CONSTRAINT fk_user_id_password FOREIGN KEY (user_id) REFERENCES public.users(user_id) ON DELETE CASCADE;
+
+
+--
+-- TOC entry 3383 (class 2606 OID 17202)
+-- Name: product_comments fk_user_id_product_comment; Type: FK CONSTRAINT; Schema: public; Owner: programmer
+--
+
+ALTER TABLE ONLY public.product_comments
+    ADD CONSTRAINT fk_user_id_product_comment FOREIGN KEY (user_id) REFERENCES public.users(user_id);
+
+
+--
+-- TOC entry 3535 (class 0 OID 0)
+-- Dependencies: 5
+-- Name: SCHEMA public; Type: ACL; Schema: -; Owner: postgres
+--
+
+REVOKE ALL ON SCHEMA public FROM postgres;
+GRANT ALL ON SCHEMA public TO manager_role;
+GRANT ALL ON SCHEMA public TO postgres WITH GRANT OPTION;
+GRANT ALL ON SCHEMA public TO manager WITH GRANT OPTION;
+
+
+--
+-- TOC entry 3538 (class 0 OID 0)
+-- Dependencies: 286
+-- Name: PROCEDURE add_address(IN useridin bigint, IN regionin character varying, IN cityin character varying, IN streetin character varying, IN housein character varying, IN apartmentin character varying, IN is_savedin boolean); Type: ACL; Schema: public; Owner: programmer
+--
+
+GRANT ALL ON PROCEDURE public.add_address(IN useridin bigint, IN regionin character varying, IN cityin character varying, IN streetin character varying, IN housein character varying, IN apartmentin character varying, IN is_savedin boolean) TO user_role;
+
+
+--
+-- TOC entry 3539 (class 0 OID 0)
+-- Dependencies: 293
+-- Name: PROCEDURE add_to_basket(IN productid bigint, IN userid bigint); Type: ACL; Schema: public; Owner: programmer
+--
+
+GRANT ALL ON PROCEDURE public.add_to_basket(IN productid bigint, IN userid bigint) TO user_role;
+
+
+--
+-- TOC entry 3540 (class 0 OID 0)
+-- Dependencies: 307
+-- Name: PROCEDURE add_to_favorites(IN userid bigint, IN productid bigint); Type: ACL; Schema: public; Owner: programmer
+--
+
+GRANT ALL ON PROCEDURE public.add_to_favorites(IN userid bigint, IN productid bigint) TO user_role;
+
+
+--
+-- TOC entry 3541 (class 0 OID 0)
+-- Dependencies: 297
+-- Name: PROCEDURE add_to_orders(IN userid bigint, IN deliverytype text, IN addressid bigint, IN productslist json); Type: ACL; Schema: public; Owner: programmer
+--
+
+GRANT ALL ON PROCEDURE public.add_to_orders(IN userid bigint, IN deliverytype text, IN addressid bigint, IN productslist json) TO user_role;
+
+
+--
+-- TOC entry 3542 (class 0 OID 0)
+-- Dependencies: 310
+-- Name: PROCEDURE delete_address(IN addressid bigint); Type: ACL; Schema: public; Owner: programmer
+--
+
+GRANT ALL ON PROCEDURE public.delete_address(IN addressid bigint) TO user_role;
+
+
+--
+-- TOC entry 3543 (class 0 OID 0)
+-- Dependencies: 292
+-- Name: PROCEDURE delete_comment(IN commentid bigint, IN userid bigint); Type: ACL; Schema: public; Owner: programmer
+--
+
+GRANT ALL ON PROCEDURE public.delete_comment(IN commentid bigint, IN userid bigint) TO user_role;
+
+
+--
+-- TOC entry 3544 (class 0 OID 0)
+-- Dependencies: 294
+-- Name: PROCEDURE delete_from_basket(IN productid bigint, IN userid bigint); Type: ACL; Schema: public; Owner: programmer
+--
+
+GRANT ALL ON PROCEDURE public.delete_from_basket(IN productid bigint, IN userid bigint) TO user_role;
+
+
+--
+-- TOC entry 3545 (class 0 OID 0)
+-- Dependencies: 308
+-- Name: PROCEDURE delete_from_favorites(IN userid bigint, IN productid bigint); Type: ACL; Schema: public; Owner: programmer
+--
+
+GRANT ALL ON PROCEDURE public.delete_from_favorites(IN userid bigint, IN productid bigint) TO user_role;
+
+
+--
+-- TOC entry 3546 (class 0 OID 0)
+-- Dependencies: 299
+-- Name: PROCEDURE delete_from_orders(IN orderid bigint); Type: ACL; Schema: public; Owner: programmer
+--
+
+GRANT ALL ON PROCEDURE public.delete_from_orders(IN orderid bigint) TO user_role;
+
+
+--
+-- TOC entry 3547 (class 0 OID 0)
+-- Dependencies: 301
+-- Name: PROCEDURE delete_product(IN productid bigint); Type: ACL; Schema: public; Owner: programmer
+--
+
+GRANT ALL ON PROCEDURE public.delete_product(IN productid bigint) TO manager_role;
+GRANT ALL ON PROCEDURE public.delete_product(IN productid bigint) TO salesman_role;
+
+
+--
+-- TOC entry 3548 (class 0 OID 0)
+-- Dependencies: 289
+-- Name: FUNCTION get_addresses(userid bigint); Type: ACL; Schema: public; Owner: programmer
+--
+
+GRANT ALL ON FUNCTION public.get_addresses(userid bigint) TO user_role;
+
+
+--
+-- TOC entry 3549 (class 0 OID 0)
+-- Dependencies: 288
+-- Name: FUNCTION get_from_basket(userid bigint); Type: ACL; Schema: public; Owner: programmer
+--
+
+GRANT ALL ON FUNCTION public.get_from_basket(userid bigint) TO user_role;
+
+
+--
+-- TOC entry 3550 (class 0 OID 0)
+-- Dependencies: 309
+-- Name: FUNCTION get_from_favorites(userid bigint); Type: ACL; Schema: public; Owner: programmer
+--
+
+GRANT ALL ON FUNCTION public.get_from_favorites(userid bigint) TO user_role;
+
+
+--
+-- TOC entry 3551 (class 0 OID 0)
+-- Dependencies: 304
+-- Name: FUNCTION get_orders(userid bigint); Type: ACL; Schema: public; Owner: programmer
+--
+
+GRANT ALL ON FUNCTION public.get_orders(userid bigint) TO manager_role;
+GRANT ALL ON FUNCTION public.get_orders(userid bigint) TO salesman_role;
+GRANT ALL ON FUNCTION public.get_orders(userid bigint) TO user_role;
+
+
+--
+-- TOC entry 3552 (class 0 OID 0)
+-- Dependencies: 302
+-- Name: FUNCTION get_product(productid bigint); Type: ACL; Schema: public; Owner: programmer
+--
+
+GRANT ALL ON FUNCTION public.get_product(productid bigint) TO manager_role;
+GRANT ALL ON FUNCTION public.get_product(productid bigint) TO salesman_role;
+
+
+--
+-- TOC entry 3553 (class 0 OID 0)
+-- Dependencies: 313
+-- Name: FUNCTION get_products(min_price real, max_price real, type_filter character varying, amount_filter integer, brand_filter character varying, characteristics_filter json, sort_order json); Type: ACL; Schema: public; Owner: programmer
+--
+
+REVOKE ALL ON FUNCTION public.get_products(min_price real, max_price real, type_filter character varying, amount_filter integer, brand_filter character varying, characteristics_filter json, sort_order json) FROM programmer;
+GRANT ALL ON FUNCTION public.get_products(min_price real, max_price real, type_filter character varying, amount_filter integer, brand_filter character varying, characteristics_filter json, sort_order json) TO salesman_role;
+GRANT ALL ON FUNCTION public.get_products(min_price real, max_price real, type_filter character varying, amount_filter integer, brand_filter character varying, characteristics_filter json, sort_order json) TO manager_role WITH GRANT OPTION;
+GRANT ALL ON FUNCTION public.get_products(min_price real, max_price real, type_filter character varying, amount_filter integer, brand_filter character varying, characteristics_filter json, sort_order json) TO programmer WITH GRANT OPTION;
+GRANT ALL ON FUNCTION public.get_products(min_price real, max_price real, type_filter character varying, amount_filter integer, brand_filter character varying, characteristics_filter json, sort_order json) TO manager WITH GRANT OPTION;
+
+
+--
+-- TOC entry 3554 (class 0 OID 0)
+-- Dependencies: 300
+-- Name: PROCEDURE update_address(IN addressid bigint, IN regionin character varying, IN cityin character varying, IN streetin character varying, IN housein character varying, IN apartmentin character varying, IN is_savedin boolean); Type: ACL; Schema: public; Owner: programmer
+--
+
+GRANT ALL ON PROCEDURE public.update_address(IN addressid bigint, IN regionin character varying, IN cityin character varying, IN streetin character varying, IN housein character varying, IN apartmentin character varying, IN is_savedin boolean) TO user_role;
+
+
+--
+-- TOC entry 3555 (class 0 OID 0)
+-- Dependencies: 306
+-- Name: PROCEDURE update_basket(IN productid bigint, IN userid bigint, IN newamount integer); Type: ACL; Schema: public; Owner: programmer
+--
+
+GRANT ALL ON PROCEDURE public.update_basket(IN productid bigint, IN userid bigint, IN newamount integer) TO user_role;
+
+
+--
+-- TOC entry 3556 (class 0 OID 0)
+-- Dependencies: 291
+-- Name: PROCEDURE update_comment(IN commentid bigint, IN userid bigint, IN commenttext character varying); Type: ACL; Schema: public; Owner: programmer
+--
+
+GRANT ALL ON PROCEDURE public.update_comment(IN commentid bigint, IN userid bigint, IN commenttext character varying) TO user_role;
+
+
+--
+-- TOC entry 3557 (class 0 OID 0)
+-- Dependencies: 298
+-- Name: PROCEDURE update_order(IN orderid bigint, IN deliverytype text, IN addressid bigint, IN productslist json); Type: ACL; Schema: public; Owner: programmer
+--
+
+GRANT ALL ON PROCEDURE public.update_order(IN orderid bigint, IN deliverytype text, IN addressid bigint, IN productslist json) TO salesman_role;
+GRANT ALL ON PROCEDURE public.update_order(IN orderid bigint, IN deliverytype text, IN addressid bigint, IN productslist json) TO user_role;
+
+
+--
+-- TOC entry 3558 (class 0 OID 0)
+-- Dependencies: 303
+-- Name: PROCEDURE update_order_status(IN orderid bigint, IN newstatus text); Type: ACL; Schema: public; Owner: programmer
+--
+
+GRANT ALL ON PROCEDURE public.update_order_status(IN orderid bigint, IN newstatus text) TO salesman_role;
+
+
+--
+-- TOC entry 3559 (class 0 OID 0)
+-- Dependencies: 305
+-- Name: PROCEDURE update_product(IN productid bigint, IN productname text, IN productbrand text, IN productprice double precision, IN productamount integer, IN productdescription text, IN producttype text, IN productphotopath text, IN productcharacteristic json); Type: ACL; Schema: public; Owner: programmer
+--
+
+GRANT ALL ON PROCEDURE public.update_product(IN productid bigint, IN productname text, IN productbrand text, IN productprice double precision, IN productamount integer, IN productdescription text, IN producttype text, IN productphotopath text, IN productcharacteristic json) TO manager_role;
+GRANT ALL ON PROCEDURE public.update_product(IN productid bigint, IN productname text, IN productbrand text, IN productprice double precision, IN productamount integer, IN productdescription text, IN producttype text, IN productphotopath text, IN productcharacteristic json) TO salesman_role;
+
+
+--
+-- TOC entry 3564 (class 0 OID 0)
+-- Dependencies: 227
+-- Name: SEQUENCE product_characteristics_characteristic_id_seq; Type: ACL; Schema: public; Owner: programmer
+--
+
+GRANT ALL ON SEQUENCE public.product_characteristics_characteristic_id_seq TO manager;
+
+
+--
+-- TOC entry 3565 (class 0 OID 0)
+-- Dependencies: 228
+-- Name: TABLE product_characteristics; Type: ACL; Schema: public; Owner: programmer
+--
+
+GRANT ALL ON TABLE public.product_characteristics TO manager;
+
+
+--
+-- TOC entry 3566 (class 0 OID 0)
+-- Dependencies: 212
+-- Name: SEQUENCE product_id; Type: ACL; Schema: public; Owner: programmer
+--
+
+GRANT ALL ON SEQUENCE public.product_id TO manager;
+
+
+--
+-- TOC entry 3567 (class 0 OID 0)
+-- Dependencies: 218
+-- Name: TABLE products; Type: ACL; Schema: public; Owner: programmer
+--
+
+GRANT ALL ON TABLE public.products TO manager;
+
+
+-- Completed on 2023-05-25 03:31:03 +03
+
+--
+-- PostgreSQL database dump complete
+--
+
